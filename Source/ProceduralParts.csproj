@@ -54,6 +54,23 @@
     <ErrorReport>prompt</ErrorReport>
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Test KSP|x86'">
+    <OutputPath>bin\x86\Test KSP\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <NoWarn>1607</NoWarn>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Test KSP|AnyCPU'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\Test KSP\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <NoWarn>1607</NoWarn>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="System">
       <Private>False</Private>
@@ -80,6 +97,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="DecouplerTweaker.cs" />
+    <Compile Include="Geometry\MeshBuilder.cs" />
+    <Compile Include="Geometry\ProfilePoint.cs" />
+    <Compile Include="Geometry\ProfileSection.cs" />
+    <Compile Include="Geometry\Vertex.cs" />
     <Compile Include="ICostModifier.cs" />
     <Compile Include="ObjectSerializer.cs" />
     <Compile Include="ProceduralHeatshield.cs" />
@@ -104,8 +125,9 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>
-    </PostBuildEvent>
+    <PostBuildEvent>IF "$(ConfigurationName)"  == "Test KSP" (
+copy /Y "$(TargetPath)" "D:\Games\Steam\steamapps\common\Kerbal Space Program\GameData\ProceduralParts\Plugins\"
+)</PostBuildEvent>
   </PropertyGroup>
   <PropertyGroup>
     <PreBuildEvent>
