@@ -367,16 +367,16 @@ namespace ProceduralParts
             norm.Normalize();
 
             WriteMeshes(
-                new ProfilePoint(p0.x, p0.y, 0f, Vector2.right),
-                new ProfilePoint(p1.x, p1.y, lengths[0] / sum, Vector2.right),
-                new ProfilePoint(p2.x, p2.y, (lengths[0] + lengths[1]) / sum, Vector2.right),
-                new ProfilePoint(p3.x, p3.y, 1f, Vector2.right)
+                new CircleSection(p0.x, p0.y, 0f, Vector2.right),
+                new CircleSection(p1.x, p1.y, lengths[0] / sum, Vector2.right),
+                new CircleSection(p2.x, p2.y, (lengths[0] + lengths[1]) / sum, Vector2.right),
+                new CircleSection(p3.x, p3.y, 1f, Vector2.right)
                 );
         }
 
         private void WriteShape()
         {
-            LinkedList<ProfilePoint> points = new LinkedList<ProfilePoint>();
+            LinkedList<CircleSection> points = new LinkedList<CircleSection>();
 
             int colliderTri = 0;
 
@@ -385,15 +385,15 @@ namespace ProceduralParts
 
             colliderTri /= 2;
 
-            Queue<LinkedListNode<ProfilePoint>> process = new Queue<LinkedListNode<ProfilePoint>>();
+            Queue<LinkedListNode<CircleSection>> process = new Queue<LinkedListNode<CircleSection>>();
             process.Enqueue(points.First);
 
             while (process.Count > 0)
             {
-                LinkedListNode<ProfilePoint> node = process.Dequeue();
-                ProfilePoint pM = node.Value;
+                LinkedListNode<CircleSection> node = process.Dequeue();
+                CircleSection pM = node.Value;
                 // ReSharper disable once PossibleNullReferenceException
-                ProfilePoint pN = node.Next.Value;
+                CircleSection pN = node.Next.Value;
 
                 float tM = pM.v;
                 float tN = pN.v;
@@ -478,13 +478,13 @@ namespace ProceduralParts
                     case 0:
                         break;
                     case 1:
-                        LinkedListNode<ProfilePoint> next = node.List.AddAfter(node, CreatePoint(ts[0], ref colliderTri));
+                        LinkedListNode<CircleSection> next = node.List.AddAfter(node, CreatePoint(ts[0], ref colliderTri));
                         process.Enqueue(node);
                         process.Enqueue(next);
                         break;
                     case 2:
-                        LinkedListNode<ProfilePoint> next0 = node.List.AddAfter(node, CreatePoint(ts[0], ref colliderTri));
-                        LinkedListNode<ProfilePoint> next1 = node.List.AddAfter(next0, CreatePoint(ts[1], ref colliderTri));
+                        LinkedListNode<CircleSection> next0 = node.List.AddAfter(node, CreatePoint(ts[0], ref colliderTri));
+                        LinkedListNode<CircleSection> next1 = node.List.AddAfter(next0, CreatePoint(ts[1], ref colliderTri));
 
                         process.Enqueue(node);
                         process.Enqueue(next0);
@@ -498,8 +498,8 @@ namespace ProceduralParts
             float sumLengths = 0;
             float[] cumLengths = new float[points.Count - 1];
 
-            LinkedListNode<ProfilePoint> pv = points.First;
-            LinkedListNode<ProfilePoint> nx = pv.Next;
+            LinkedListNode<CircleSection> pv = points.First;
+            LinkedListNode<CircleSection> nx = pv.Next;
             for (int i = 0; i < cumLengths.Length; ++i, pv = nx, nx = nx.Next)
             {
                 // ReSharper disable once PossibleNullReferenceException
@@ -521,7 +521,7 @@ namespace ProceduralParts
             WriteMeshes(points);
         }
 
-        private ProfilePoint CreatePoint(float t, ref int colliderTri)
+        private CircleSection CreatePoint(float t, ref int colliderTri)
         {
             // ReSharper disable once InconsistentNaming
             // B(t) = (1-t)^3 p0 + t(1-t)^2 p1 + t^2(1-t) p2 + t^3 p3
@@ -542,8 +542,8 @@ namespace ProceduralParts
 
             // We can have a maxium of 255 triangles in the collider. Will leave a bit of breathing room at the top.
             return colliderTri <= 220 ? 
-                new ProfilePoint(Bt.x, Bt.y, t, norm, colliderCirc: colliderCirc) : 
-                new ProfilePoint(Bt.x, Bt.y, t, norm, inCollider: false);
+                new CircleSection(Bt.x, Bt.y, t, norm, colliderCirc: colliderCirc) : 
+                new CircleSection(Bt.x, Bt.y, t, norm, inCollider: false);
         }
 
         private Vector2 B(float t)

@@ -216,7 +216,6 @@ namespace ProceduralParts
             {
                 if(needsTechInit)
                     InitializeTechLimits();
-
                 UpdateTexture();
                 UpdateShape();
             }

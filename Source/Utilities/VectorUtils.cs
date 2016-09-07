@@ -19,6 +19,14 @@ namespace ProceduralParts
             return new Vector4(v.x, v.y, v.z, w);
         }
 
+        public static bool CloseTo(this Vector3 v1, Vector3 v2)
+        {
+            return (v2 - v1).magnitude < float.Epsilon;
+        }
 
+        public static bool CloseTo(this Vector2 v1, Vector2 v2)
+        {
+            return (v2 - v1).magnitude < float.Epsilon;
+        }
     }
 }

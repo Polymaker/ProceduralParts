@@ -9,6 +9,7 @@ namespace ProceduralParts
 {
     public class ProceduralShapePrism : ProceduralAbstractSoRShape
     {
+
         #region Properties (fields)
 
         [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Diameter", guiFormat = "F3", guiUnits = "m"),
@@ -113,8 +114,8 @@ namespace ProceduralParts
 
             Vector2 norm = new Vector2(1, 0);
             UpdateMeshNodesSizes(
-                new ProfilePoint(diameter, -0.5f * length, 0f, norm),
-                new ProfilePoint(diameter, 0.5f * length, 1f, norm)
+                new CircleSection(diameter, -0.5f * length, 0f, norm),
+                new CircleSection(diameter, 0.5f * length, 1f, norm)
                 );
 
             WriteMeshes(
@@ -256,7 +257,7 @@ namespace ProceduralParts
                 lengthEdit.incrementSmall = PPart.lengthSmallStep;
                 length = Mathf.Clamp(length, PPart.lengthMin, PPart.lengthMax);
             }
-
+            
             if (PPart.diameterMin == PPart.diameterMax)
                 Fields["diameter"].guiActiveEditor = false;
             else
@@ -291,7 +292,7 @@ namespace ProceduralParts
         public override void UpdateTFInterops()
         {
             ProceduralPart.tfInterface.InvokeMember("AddInteropValue", ProceduralPart.tfBindingFlags, null, null, new System.Object[] { this.part, "diam1", diameter, "ProceduralParts" });
-            ProceduralPart.tfInterface.InvokeMember("AddInteropValue", ProceduralPart.tfBindingFlags, null, null, new System.Object[] { this.part, "diam2", sides, "ProceduralParts" });
+            ProceduralPart.tfInterface.InvokeMember("AddInteropValue", ProceduralPart.tfBindingFlags, null, null, new System.Object[] { this.part, "diam2", diameter, "ProceduralParts" });
             ProceduralPart.tfInterface.InvokeMember("AddInteropValue", ProceduralPart.tfBindingFlags, null, null, new System.Object[] { this.part, "length", length, "ProceduralParts" });
         }
     }

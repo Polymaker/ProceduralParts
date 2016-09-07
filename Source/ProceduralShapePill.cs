@@ -161,13 +161,13 @@ namespace ProceduralParts
                 }
             }
 
-            LinkedList<ProfilePoint> points = new LinkedList<ProfilePoint>();
+            LinkedList<CircleSection> points = new LinkedList<CircleSection>();
 
             if (fillet == 0)
             {
                 // Reduces down to a cylinder part.
-                points.AddLast(new ProfilePoint(diameter, -0.5f * length, 0f, new Vector2(1, 0)));
-                points.AddLast(new ProfilePoint(diameter, 0.5f * length, 1f, new Vector2(1, 0)));
+                points.AddLast(new CircleSection(diameter, -0.5f * length, 0f, new Vector2(1, 0)));
+                points.AddLast(new CircleSection(diameter, 0.5f * length, 1f, new Vector2(1, 0)));
             }
             else
             {
@@ -186,22 +186,22 @@ namespace ProceduralParts
                 CirclePoints collEnds = CirclePoints.ForDiameter(endDiameter, MaxCircleError * 4f, 4, 12);
                 CirclePoints collBody = CirclePoints.ForDiameter(bodyDiameter, MaxCircleError * 4f, 4, 16);
 
-                points.AddLast(new ProfilePoint(endDiameter, -0.5f * length, 0f, new Vector2(0, -1), colliderCirc: collEnds));
+                points.AddLast(new CircleSection(endDiameter, -0.5f * length, 0f, new Vector2(0, -1), colliderCirc: collEnds));
 
                 foreach (Vector3 xzu in cp.PointsXZU(0.5f, 0.75f))
-                    points.AddLast(new ProfilePoint(endDiameter + fillet * xzu.x, -0.5f * (bodyLength - fillet * xzu.y), s1 * Mathf.InverseLerp(0.5f, 0.75f, xzu[2]), xzu, inCollider: false));
+                    points.AddLast(new CircleSection(endDiameter + fillet * xzu.x, -0.5f * (bodyLength - fillet * xzu.y), s1 * Mathf.InverseLerp(0.5f, 0.75f, xzu[2]), xzu, inCollider: false));
                 foreach (Vector3 xzu in collCp.PointsXZU(0.5f, 0.75f))
-                    points.AddLast(new ProfilePoint(endDiameter + fillet * xzu.x, -0.5f * (bodyLength - fillet * xzu.y), s1 * Mathf.InverseLerp(0.5f, 0.75f, xzu[2]), xzu, inRender: false, colliderCirc: collEnds));
+                    points.AddLast(new CircleSection(endDiameter + fillet * xzu.x, -0.5f * (bodyLength - fillet * xzu.y), s1 * Mathf.InverseLerp(0.5f, 0.75f, xzu[2]), xzu, inRender: false, colliderCirc: collEnds));
 
-                points.AddLast(new ProfilePoint(bodyDiameter, -0.5f * bodyLength, s1, new Vector2(1, 0), colliderCirc: collBody));
+                points.AddLast(new CircleSection(bodyDiameter, -0.5f * bodyLength, s1, new Vector2(1, 0), colliderCirc: collBody));
                 if (fillet < length)
-                    points.AddLast(new ProfilePoint(bodyDiameter, 0.5f * bodyLength, 1f - s1, new Vector2(1, 0), colliderCirc: collBody));
+                    points.AddLast(new CircleSection(bodyDiameter, 0.5f * bodyLength, 1f - s1, new Vector2(1, 0), colliderCirc: collBody));
 
                 foreach (Vector3 xzu in cp.PointsXZU(0.75f, 1))
-                    points.AddLast(new ProfilePoint(endDiameter + fillet * xzu.x, 0.5f * (bodyLength + fillet * xzu.y), 1f - s1 * Mathf.InverseLerp(1f, 0.75f, xzu[2]), xzu, inCollider: false));
+                    points.AddLast(new CircleSection(endDiameter + fillet * xzu.x, 0.5f * (bodyLength + fillet * xzu.y), 1f - s1 * Mathf.InverseLerp(1f, 0.75f, xzu[2]), xzu, inCollider: false));
                 foreach (Vector3 xzu in collCp.PointsXZU(0.75f, 1))
-                    points.AddLast(new ProfilePoint(endDiameter + fillet * xzu.x, 0.5f * (bodyLength + fillet * xzu.y), 1f - s1 * Mathf.InverseLerp(1f, 0.75f, xzu[2]), xzu, inRender: false, colliderCirc: collEnds));
-                points.AddLast(new ProfilePoint(endDiameter, 0.5f * length, 1f, new Vector2(0, 1), colliderCirc: collEnds));
+                    points.AddLast(new CircleSection(endDiameter + fillet * xzu.x, 0.5f * (bodyLength + fillet * xzu.y), 1f - s1 * Mathf.InverseLerp(1f, 0.75f, xzu[2]), xzu, inRender: false, colliderCirc: collEnds));
+                points.AddLast(new CircleSection(endDiameter, 0.5f * length, 1f, new Vector2(0, 1), colliderCirc: collEnds));
             }
 
             WriteMeshes(points);

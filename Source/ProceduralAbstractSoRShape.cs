@@ -69,12 +69,12 @@ namespace ProceduralParts
                         radius = lastProfile.Last.Value.dia / 2.0f * coords.r;
                 else
                 {
-                    ProfilePoint pt = lastProfile.First.Value;
-                    for (LinkedListNode<ProfilePoint> ptNode = lastProfile.First.Next; ptNode != null; ptNode = ptNode.Next)
+                    CircleSection pt = lastProfile.First.Value;
+                    for (LinkedListNode<CircleSection> ptNode = lastProfile.First.Next; ptNode != null; ptNode = ptNode.Next)
                     {
                         if (!ptNode.Value.inCollider)
                             continue;
-                        ProfilePoint pv = pt;
+                        CircleSection pv = pt;
                         pt = ptNode.Value;
 
                         if (position.y >= Mathf.Min(pv.y, pt.y) && position.y < Mathf.Max(pv.y, pt.y))
@@ -160,12 +160,12 @@ namespace ProceduralParts
                     direction.magnitude / (lastProfile.Last.Value.dia / 2.0f); // RELATIVE_TO_SHAPE_RADIUS
             else
             {
-                ProfilePoint pt = lastProfile.First.Value;
-                for (LinkedListNode<ProfilePoint> ptNode = lastProfile.First.Next; ptNode != null; ptNode = ptNode.Next)
+                CircleSection pt = lastProfile.First.Value;
+                for (LinkedListNode<CircleSection> ptNode = lastProfile.First.Next; ptNode != null; ptNode = ptNode.Next)
                 {
                     if (!ptNode.Value.inCollider)
                         continue;
-                    ProfilePoint pv = pt;
+                    CircleSection pv = pt;
                     pt = ptNode.Value;
 
                     if(position.y >= Mathf.Min(pv.y, pt.y) && position.y < Mathf.Max(pv.y, pt.y))
@@ -252,7 +252,7 @@ namespace ProceduralParts
             // ReSharper disable once CompareOfFloatsByEqualityOperator
             if (phi != 0)
             {
-                ProfilePoint topBot = (phi < 0) ? lastProfile.First.Value : lastProfile.Last.Value;
+                CircleSection topBot = (phi < 0) ? lastProfile.First.Value : lastProfile.Last.Value;
 
                 float tbR = Mathf.Sqrt(Mathf.Clamp(topBot.y * topBot.y + topBot.dia * topBot.dia * 0.25f, 0f, Mathf.Infinity));
                 float tbPhi = Mathf.Asin(Mathf.Clamp(topBot.y / tbR, -1f, 1f));
@@ -288,12 +288,12 @@ namespace ProceduralParts
             if (float.IsNaN(ret.uv[0]))
                 ret.uv[0] = 0f;
 
-            ProfilePoint pt = lastProfile.First.Value;
-            for (LinkedListNode<ProfilePoint> ptNode = lastProfile.First.Next; ptNode != null; ptNode = ptNode.Next)
+            CircleSection pt = lastProfile.First.Value;
+            for (LinkedListNode<CircleSection> ptNode = lastProfile.First.Next; ptNode != null; ptNode = ptNode.Next)
             {
                 if (!ptNode.Value.inCollider)
                     continue;
-                ProfilePoint pv = pt;
+                CircleSection pv = pt;
                 pt = ptNode.Value;
 
                 float ptR = Mathf.Sqrt(pt.y * pt.y + pt.dia * pt.dia * 0.25f);
@@ -390,12 +390,12 @@ namespace ProceduralParts
             return ret;
         }
 
-        private void MoveAttachments(LinkedList<ProfilePoint> pts)
+        private void MoveAttachments(LinkedList<CircleSection> pts)
         {
             lastProfile = pts;
 
             // top points
-            ProfilePoint top = pts.Last.Value;
+            CircleSection top = pts.Last.Value;
             foreach (Attachment a in topAttachments)
             {
                 Vector3 pos = new Vector3(
@@ -408,7 +408,7 @@ namespace ProceduralParts
             }
 
             // bottom points
-            ProfilePoint bot = pts.First.Value;
+            CircleSection bot = pts.First.Value;
             foreach (Attachment a in bottomAttachments)
             {
                 Vector3 pos = new Vector3(
@@ -421,9 +421,9 @@ namespace ProceduralParts
             }
 
             // sides
-            ProfilePoint pv = null;
-            ProfilePoint pt = pts.First.Value;
-            LinkedListNode<ProfilePoint> ptNode = pts.First;
+            CircleSection pv = null;
+            CircleSection pt = pts.First.Value;
+            LinkedListNode<CircleSection> ptNode = pts.First;
             foreach (Attachment a in sideAttachments)
             {
                 while (pt.v < a.uv[1])
@@ -474,7 +474,7 @@ namespace ProceduralParts
             }
         }
 
-        private static Quaternion SideAttachOrientation(ProfilePoint pv, ProfilePoint pt, float theta, out Vector3 normal)
+        private static Quaternion SideAttachOrientation(CircleSection pv, CircleSection pt, float theta, out Vector3 normal)
         {
             normal = Quaternion.AngleAxis(theta * 180 / Mathf.PI, Vector3.up) * new Vector2(pt.y - pv.y, -(pt.dia - pv.dia) / 2f);
             return Quaternion.FromToRotation(Vector3.up, normal);
@@ -531,7 +531,7 @@ namespace ProceduralParts
 
         #region Mesh Writing
 
-        protected class ProfilePoint
+        protected class CircleSection
         {
             public readonly float dia;
             public readonly float y;
@@ -547,7 +547,7 @@ namespace ProceduralParts
             public readonly CirclePoints circ;
             public readonly CirclePoints colliderCirc;
 
-            public ProfilePoint(float dia, float y, float v, Vector2 norm, bool inRender = true, bool inCollider = true, CirclePoints circ = null, CirclePoints colliderCirc = null)
+            public CircleSection(float dia, float y, float v, Vector2 norm, bool inRender = true, bool inCollider = true, CirclePoints circ = null, CirclePoints colliderCirc = null)
             {
                 this.dia = dia;
                 this.y = y;
@@ -568,7 +568,7 @@ namespace ProceduralParts
             }
         }
 
-        private LinkedList<ProfilePoint> lastProfile;
+        private LinkedList<CircleSection> lastProfile;
 
 
         public Vector3[] GetEndcapVerticies(bool top)
@@ -576,7 +576,7 @@ namespace ProceduralParts
             if (lastProfile == null)
                 return new Vector3[0];
 
-            ProfilePoint profilePoint = top ? lastProfile.Last.Value : lastProfile.First.Value;
+            CircleSection profilePoint = top ? lastProfile.Last.Value : lastProfile.First.Value;
             
 
             Vector3[] verticies = new Vector3[profilePoint.circ.totVertexes];
@@ -593,9 +593,9 @@ namespace ProceduralParts
         
 
 
-        protected void WriteMeshes(params ProfilePoint[] pts)
+        protected void WriteMeshes(params CircleSection[] pts)
         {
-            WriteMeshes(new LinkedList<ProfilePoint>(pts));
+            WriteMeshes(new LinkedList<CircleSection>(pts));
         }
 
         /// <summary>
@@ -604,7 +604,7 @@ namespace ProceduralParts
         /// texture stretching.
         /// </summary>
         /// <param name="pts"></param>
-        protected void WriteMeshes(LinkedList<ProfilePoint> pts)
+        protected void WriteMeshes(LinkedList<CircleSection> pts)
         {
             if (pts == null || pts.Count < 2)
                 return;
@@ -628,13 +628,13 @@ namespace ProceduralParts
             int nColTri = 0;
             bool customCollider = false;
 
-            ProfilePoint first = pts.First.Value;
-            ProfilePoint last = pts.Last.Value;
+            CircleSection first = pts.First.Value;
+            CircleSection last = pts.Last.Value;
 
             if (!first.inCollider || !last.inCollider)
                 throw new InvalidOperationException("First and last profile points must be used in the collider");
 
-            foreach (ProfilePoint pt in pts)
+            foreach (CircleSection pt in pts)
             {
                 customCollider = customCollider || pt.CustomCollider;
 
@@ -662,10 +662,10 @@ namespace ProceduralParts
 
             bool odd = false;
             {
-                ProfilePoint prev = null;
+                CircleSection prev = null;
                 int off = 0, prevOff = 0;
                 int tOff = 0;
-                foreach (ProfilePoint pt in pts)
+                foreach (CircleSection pt in pts)
                 {
                     if (!pt.inRender)
                         continue;
@@ -737,7 +737,7 @@ namespace ProceduralParts
             //Debug.LogWarning("Collider mesh vert=" + nColVrt + " tris=" + nColTri);
                 
             // collider endcaps
-            ProfilePoint firstColPt, lastColPt;
+            CircleSection firstColPt, lastColPt;
 
             firstColPt = pts.First(x => x.inCollider);
             lastColPt = pts.Last(x => x.inCollider);
@@ -748,11 +748,11 @@ namespace ProceduralParts
             m = new UncheckedMesh(nColVrt+nColEndVrt, nColTri+nColEndTri);
             odd = false;
             {
-                ProfilePoint prev = null;
+                CircleSection prev = null;
                 int off = 0, prevOff = 0;
                 int tOff = 0;
                     
-                foreach (ProfilePoint pt in pts)
+                foreach (CircleSection pt in pts)
                 {
                     if (!pt.inCollider)
                         continue;
@@ -841,12 +841,12 @@ namespace ProceduralParts
         /// <summary>
         /// Subdivide profile points according to the max diameter change. 
         /// </summary>
-        private void SubdivHorizontal(LinkedList<ProfilePoint> pts)
+        private void SubdivHorizontal(LinkedList<CircleSection> pts)
         {
-            ProfilePoint prev = pts.First.Value;
-            for (LinkedListNode<ProfilePoint> node = pts.First.Next; node != null; node = node.Next)
+            CircleSection prev = pts.First.Value;
+            for (LinkedListNode<CircleSection> node = pts.First.Next; node != null; node = node.Next)
             {
-                ProfilePoint curr = node.Value;
+                CircleSection curr = node.Value;
                 if (!curr.inRender)
                     continue;
 
@@ -878,7 +878,7 @@ namespace ProceduralParts
                         else
                             norm = prev.norm;
 
-                        pts.AddBefore(node, new ProfilePoint(dia: tDiameter, y: tY, v: tV, norm: norm, inCollider: false));
+                        pts.AddBefore(node, new CircleSection(dia: tDiameter, y: tY, v: tV, norm: norm, inCollider: false));
                     }
                 }
 
@@ -886,7 +886,7 @@ namespace ProceduralParts
             }
         }
 
-        protected void UpdateNodeSize(ProfilePoint pt, string nodeName)
+        protected void UpdateNodeSize(CircleSection pt, string nodeName)
         {
             AttachNode node = part.attachNodes.Find(n => n.id == nodeName);
             if (node == null)
@@ -903,12 +903,12 @@ namespace ProceduralParts
             RaiseChangeTextureScale(nodeName, PPart.EndsMaterial, new Vector2(pt.dia, pt.dia));
         }
 
-        protected void UpdateMeshNodesSizes(ProfilePoint bottom, ProfilePoint top)
+        protected void UpdateMeshNodesSizes(CircleSection bottom, CircleSection top)
         {
-            UpdateMeshNodesSizes(new LinkedList<ProfilePoint>(new ProfilePoint[] { bottom, top }));
+            UpdateMeshNodesSizes(new LinkedList<CircleSection>(new CircleSection[] { bottom, top }));
         }
 
-        private void UpdateMeshNodesSizes(LinkedList<ProfilePoint> pts)
+        private void UpdateMeshNodesSizes(LinkedList<CircleSection> pts)
         {
             if (pts == null || pts.Count < 2)
                 return;

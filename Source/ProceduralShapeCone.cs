@@ -220,8 +220,8 @@ namespace ProceduralParts
             norm.Normalize();
 
             WriteMeshes(
-                new ProfilePoint(bottomDiameter, -0.5f * length, 0f, norm),
-                new ProfilePoint(topDiameter, 0.5f * length, 1f, norm)
+                new CircleSection(bottomDiameter, -0.5f * length, 0f, norm),
+                new CircleSection(topDiameter, 0.5f * length, 1f, norm)
                 );
 
             oldTopDiameter = topDiameter;
@@ -277,6 +277,7 @@ namespace ProceduralParts
 
             if (coneBottomMode == ConeEndMode.Constant)
             {
+                
                 // Bottom diameter is constant
                 Fields["bottomDiameter"].guiActiveEditor = false;
                 Fields["topDiameter"].guiName = "Diameter";

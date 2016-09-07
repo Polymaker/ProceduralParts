@@ -44,25 +44,30 @@ namespace ProceduralParts
                 return;
 
             Volume = CalcVolume();
+            try
+            {
+                var mk2Profile = ProfileSection.GetMk2Section(diameter);
 
-            var mk2Profile = ProfileSection.GetMk2Section(diameter);
+                RaiseChangeTextureScale("sides", PPart.SidesMaterial, new Vector2(mk2Profile.Perimeter * 2f, length));
 
-            RaiseChangeTextureScale("sides", PPart.SidesMaterial, new Vector2(mk2Profile.Perimeter * 2f, length));
+                Vector2 norm = new Vector2(1, 0);
+                UpdateMeshNodesSizes(
+                    new CircleSection(diameter, -0.5f * length, 0f, norm),
+                    new CircleSection(diameter, 0.5f * length, 1f, norm)
+                    );
 
-            Vector2 norm = new Vector2(1, 0);
-            UpdateMeshNodesSizes(
-                new ProfilePoint(diameter, -0.5f * length, 0f, norm),
-                new ProfilePoint(diameter, 0.5f * length, 1f, norm)
-                );
-
-            WriteMeshes(
-                MeshBuilder.ExtrudeSides(mk2Profile, length),
-                //new UncheckedMesh(0,0),
-                MeshBuilder.CreateCaps(mk2Profile, length),
-                //new UncheckedMesh(0,0)
-                MeshBuilder.CreateCollider(mk2Profile, length)
-                );
-
+                WriteMeshes(
+                    MeshBuilder.ExtrudeSides(mk2Profile, length),
+                    //new UncheckedMesh(0,0),
+                    MeshBuilder.CreateCaps(mk2Profile, length),
+                    //new UncheckedMesh(0,0)
+                    MeshBuilder.CreateCollider(mk2Profile, length)
+                    );
+            }
+            catch (Exception ex)
+            {
+                Debug.LogException(ex);
+            }
             oldDiameter = diameter;
             oldLength = length;
 
