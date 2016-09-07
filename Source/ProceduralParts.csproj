@@ -105,6 +105,7 @@
     <Compile Include="ObjectSerializer.cs" />
     <Compile Include="ProceduralHeatshield.cs" />
     <Compile Include="ProceduralShapeBezierCone.cs" />
+    <Compile Include="ProceduralShapeMk2.cs" />
     <Compile Include="ProceduralShapePill.cs" />
     <Compile Include="ProceduralShapePrism.cs" />
     <Compile Include="ProceduralSRB.cs" />
@@ -126,7 +127,7 @@
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>IF "$(ConfigurationName)"  == "Test KSP" (
-copy /Y "$(TargetPath)" "D:\Games\Steam\steamapps\common\Kerbal Space Program\GameData\ProceduralParts\Plugins\"
+copy /Y "$(TargetPath)" "D:\Steam\SteamApps\common\Kerbal Space Program\GameData\ProceduralParts\Plugins\"
 )</PostBuildEvent>
   </PropertyGroup>
   <PropertyGroup>

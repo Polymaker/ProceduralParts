@@ -106,173 +106,32 @@ namespace ProceduralParts
 
             Volume = CalcVolume();
 
-            var sideLen = GetSideLength(isInscribed, diameter, (int)sides);
-            RaiseChangeTextureScale("sides", PPart.SidesMaterial, new Vector2(sideLen * sides * 2f, length));
+            var realDiam = GetRealOuterDiam(isInscribed, diameter, (int)sides);
+            var prismSection = Geometry.ProfileSection.GetPrismSection((int)sides, realDiam);
 
-            //var outerDiam = GetRealOuterDiam(isInscribed, diameter, (int)sides);
-            var innerDiam = GetRealInnerDiam(isInscribed, diameter, (int)sides);
-            //var avgDiam = (innerDiam + outerDiam) / 2f;
+            RaiseChangeTextureScale("sides", PPart.SidesMaterial, new Vector2(prismSection.Perimeter * 2f, length));
 
             Vector2 norm = new Vector2(1, 0);
             UpdateMeshNodesSizes(
-                new ProfilePoint(innerDiam, -0.5f * length, 0f, norm),
-                new ProfilePoint(innerDiam, 0.5f * length, 1f, norm)
+                new ProfilePoint(diameter, -0.5f * length, 0f, norm),
+                new ProfilePoint(diameter, 0.5f * length, 1f, norm)
                 );
 
             WriteMeshes(
-                CreatePrismMesh((int)sides, diameter, length, isInscribed),
-                CreatePrismEnds((int)sides, diameter, length, isInscribed),
-                CreatePrismCollider((int)sides, diameter, length, isInscribed));
+                Geometry.MeshBuilder.ExtrudeSides(prismSection, length),
+                Geometry.MeshBuilder.CreateCaps(prismSection, length),
+                Geometry.MeshBuilder.CreateCollider(prismSection, length)
+                /*CreatePrismCollider((int)sides, diameter, length, isInscribed)*/);
 
             oldDiameter = diameter;
             oldLength = length;
             oldSides = sides;
             oldIsInscribed = isInscribed;
-
+            
             UpdateInterops();
         }
 
         #region Mesh Generation
-
-        private static UncheckedMesh CreatePrismMesh(int sides, float diameter, float length, bool inscribed)
-        {
-            var realDiam = GetRealOuterDiam(inscribed, diameter, sides);
-            var prismSection = Geometry.ProfileSection.GetPrismSection(sides, realDiam);
-            return Geometry.MeshBuilder.ExtrudeSides(prismSection, length);
-            //float theta = (Mathf.PI * 2f) / (float)sides;
-
-            //var vertices = new List<Vertex>();
-            //var triangles = new List<int>();
-
-            ////vertices/normals/tangents/uvs
-            //for (int s = 0; s < sides; s++)
-            //{
-            //    float posX = Mathf.Cos(theta * s);
-            //    float posZ = -Mathf.Sin(theta * s);
-            //    var norm = new Vector3(posX, 0, posZ);
-            //    var curIndex = vertices.Count;
-            //    var t1 = GetPrismVertex(theta * s - theta / 2f, realDiam, length, true, norm, new Vector2((float)s / (float)sides, 1f));
-            //    var t2 = GetPrismVertex(theta * s + theta / 2f, realDiam, length, true, norm, new Vector2((float)(s + 1) / (float)sides, 1f));
-            //    var b1 = GetPrismVertex(theta * s - theta / 2f, realDiam, length, false, norm, new Vector2((float)s / (float)sides, 0f));
-            //    var b2 = GetPrismVertex(theta * s + theta / 2f, realDiam, length, false, norm, new Vector2((float)(s + 1) / (float)sides, 0f));
-            //    vertices.AddRange(new Vertex[] { t1, t2, b1, b2 });
-            //    triangles.AddRange(new int[]{
-            //        curIndex,//t1
-            //        curIndex + 1,//t2
-            //        curIndex + 2,//b1
-            //        curIndex + 2,//b1
-            //        curIndex + 1,//t2
-            //        curIndex + 3//b3
-            //    });
-            //}
-            //var mesh = new UncheckedMesh(vertices.Count, triangles.Count / 3);
-            //for (int i = 0; i < vertices.Count; i++)
-            //{
-            //    mesh.verticies[i] = vertices[i].Pos;
-            //    mesh.normals[i] = vertices[i].Norm;
-            //    mesh.tangents[i] = vertices[i].Tan;
-            //    mesh.uv[i] = vertices[i].Uv;
-            //}
-            //for (int i = 0; i < triangles.Count; i++)
-            //    mesh.triangles[i] = triangles[i];
-
-            //return mesh;
-        }
-
-        private static Vertex GetPrismVertex(float theta, float diameter, float length, bool top, Vector3 normal, Vector2 uv)
-        {
-            float posX = Mathf.Cos(theta);
-            float posZ = -Mathf.Sin(theta);
-            return new Vertex(
-                new Vector3(posX * (diameter / 2f), (top ? -0.5f : 0.5f) * length, posZ * (diameter / 2f)),
-                normal,
-                GetTangentFromNormal(normal),
-                uv);
-        }
-
-        private static Vector4 GetTangentFromNormal(Vector3 normal)
-        {
-            Vector3 t1 = Vector3.Cross(normal, Vector3.forward);
-            Vector3 t2 = Vector3.Cross(normal, Vector3.up);
-            return t1.magnitude > t2.magnitude ? t1 : t2;
-        }
-
-        private static UncheckedMesh CreatePrismEnds(int sides, float diameter, float length, bool inscribed)
-        {
-            var realDiam = GetRealOuterDiam(inscribed, diameter, sides);
-            var prismSection = Geometry.ProfileSection.GetPrismCap(sides, realDiam);
-            return Geometry.MeshBuilder.CreateCaps(prismSection, length);
-            /*
-            var outerDiam = GetRealOuterDiam(inscribed, diameter, sides);
-            var innerDiam = GetRealInnerDiam(inscribed, diameter, sides);
-            
-            float theta = (Mathf.PI * 2f) / (float)sides;
-            theta /= 2f;
-            var oRad = outerDiam / 2f;
-            var iRad = innerDiam / 2f;
-
-            var vertices = new List<Vertex>();
-
-            vertices.Add(new Vertex(new Vector3(0, -0.5f * length, 0), new Vector3(0, -1, 0), new Vector4(-1, 0, 0, 1), new Vector2(0.5f, 0.5f)));//top center
-
-            for (int s = 0; s <= sides * 2; s++)
-            {
-                float posX = Mathf.Cos(theta * s - theta);
-                float posZ = -Mathf.Sin(theta * s - theta);
-                var radius = s % 2 == 0 ? oRad : iRad;
-
-                vertices.Add(new Vertex(
-                    new Vector3(posX * radius, -0.5f * length, posZ * radius),
-                    new Vector3(0, -1, 0),
-                    new Vector4(-1, 0, 0, 1),
-                    new Vector2((posX + 1f) / 2f, (posZ + 1f) / 2f)));
-            }
-
-            int vPerSide = vertices.Count;
-
-            vertices.Add(new Vertex(new Vector3(0, 0.5f * length, 0), new Vector3(0, 1, 0), new Vector4(-1, 0, 0, -1), new Vector2(0.5f, 0.5f)));//bottom center
-
-            for (int s = 0; s <= sides * 2; s++)
-            {
-                float posX = Mathf.Cos(theta * s - theta);
-                float posZ = -Mathf.Sin(theta * s - theta);
-                var radius = s % 2 == 0 ? oRad : iRad;
-
-                vertices.Add(new Vertex(
-                    new Vector3(posX * radius, 0.5f * length, posZ * radius),
-                    new Vector3(0, 1, 0),
-                    new Vector4(-1, 0, 0, -1),
-                    new Vector2((posX + 1f) / 2f, (posZ + 1f) / 2f)));
-            }
-            
-            var tList = new List<int>();
-
-            for (int s = 0; s < sides * 2; s++)
-            {
-                tList.Add(0);
-                tList.Add(2 + s);
-                tList.Add(1 + s);
-
-                tList.Add(vPerSide);
-                tList.Add(vPerSide + 1 + s);
-                tList.Add(vPerSide + 2 + s);
-            }
-
-            var mesh = new UncheckedMesh(vertices.Count, tList.Count / 3);
-
-            for (int i = 0; i < vertices.Count; i++)
-            {
-                mesh.verticies[i] = vertices[i].Pos;
-                mesh.normals[i] = vertices[i].Norm;
-                mesh.tangents[i] = vertices[i].Tan;
-                mesh.uv[i] = vertices[i].Uv;
-            }
-
-            for (int i = 0; i < tList.Count; i++)
-                mesh.triangles[i] = tList[i];
-
-            return mesh;*/
-        }
 
         private static UncheckedMesh CreatePrismCollider(int sides, float diameter, float length, bool inscribed)
         {

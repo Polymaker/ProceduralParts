@@ -42,47 +42,108 @@ namespace ProceduralParts.Geometry
             return CreateMesh(vertices, triangles);
         }
 
+        private static List<Vector2> GetProfileCapVertices(ProfileSection profile)
+        {
+            Vector2 lastPoint = Vector2.zero;
+            var vertices = new List<Vector2>();
+            for (int i = 1; i <= profile.PointCount; i++)
+            {
+                var curPoint = profile.Points[i % profile.PointCount].Position;
+                if ((curPoint - lastPoint).magnitude > float.Epsilon)
+                {
+                    if (i < profile.PointCount)
+                        vertices.Add(curPoint);
+                    else
+                        vertices.Insert(0, curPoint);
+                }
+                lastPoint = curPoint;
+            }
+            return vertices;
+        }
+
         public static UncheckedMesh CreateCaps(ProfileSection profile, float length)
         {
             var vertices = new List<Vertex>();
             var triangles = new List<int>();
             var centerOffset = new Vector2(profile.Width / 2f, profile.Height / 2f);
+            var maxSize = Math.Max(profile.Width, profile.Height);
+            var uvOffset = new Vector2((maxSize - profile.Width) / 2f, (maxSize - profile.Height) / 2f);
+            var distinctPoints = GetProfileCapVertices(profile);
 
+            //Note to myself: face orientation has nothing to do with vertex normals... just double check triangle winding order
+
+            //TOP VERTICES
             vertices.Add(new Vertex(new Vector3(0, 0.5f * length, 0), new Vector3(0, 1, 0), new Vector4(-1, 0, 0, -1), new Vector2(0.5f, 0.5f)));//top center
-            
-            for (int i = 0; i < profile.PointCount; i++)
+            for (int i = 0; i < distinctPoints.Count; i++)
             {
-                var curPoint = profile.Points[i];
-                var uv = new Vector2((curPoint.Position.x + centerOffset.x) / profile.Width, (curPoint.Position.y + centerOffset.y) / profile.Height);
+                var curPoint = distinctPoints[i];
+                var uv = new Vector2((curPoint.x + centerOffset.x + uvOffset.x) / maxSize, (curPoint.y + centerOffset.y + uvOffset.y) / maxSize);
                 vertices.Add(new Vertex(
-                    new Vector3(curPoint.Position.x, 0.5f * length, curPoint.Position.y),
+                    new Vector3(curPoint.x, 0.5f * length, curPoint.y),
                     new Vector3(0, 1, 0), new Vector4(-1, 0, 0, -1), uv));
             }
 
+            //BOTTOM VERTICES
             vertices.Add(new Vertex(new Vector3(0, -0.5f * length, 0), new Vector3(0, -1, 0), new Vector4(-1, 0, 0, 1), new Vector2(0.5f, 0.5f)));//bottom center
-
-            for (int i = 0; i < profile.PointCount; i++)
+            for (int i = 0; i < distinctPoints.Count; i++)
             {
-                var curPoint = profile.Points[i];
-                var uv = new Vector2((curPoint.Position.x + centerOffset.x) / profile.Width, (curPoint.Position.y + centerOffset.y) / profile.Height);
+                var curPoint = distinctPoints[i];
+                var uv = new Vector2((curPoint.x + centerOffset.x + uvOffset.x) / maxSize, (curPoint.y + centerOffset.y + uvOffset.y) / maxSize);
                 vertices.Add(new Vertex(
-                    new Vector3(curPoint.Position.x, -0.5f * length, curPoint.Position.y),
+                    new Vector3(curPoint.x, -0.5f * length, curPoint.y),
                     new Vector3(0, -1, 0), new Vector4(-1, 0, 0, 1), uv));
             }
 
-            for (int s = 0; s < profile.PointCount - 1; s++)
+            int vPerSide = distinctPoints.Count + 1;
+            for (int s = 0; s < distinctPoints.Count; s++)
             {
                 //top
                 triangles.Add(0);//center
-                triangles.Add(2 + s);
                 triangles.Add(1 + s);
+                triangles.Add(1 + (s + 1) % distinctPoints.Count);
+                
                 //bottom
-                triangles.Add(profile.PointCount);//center
-                triangles.Add(profile.PointCount + 1 + s);
-                triangles.Add(profile.PointCount + 2 + s);
+                triangles.Add(vPerSide);//center
+                triangles.Add(vPerSide + 1 + (s + 1) % distinctPoints.Count);
+                triangles.Add(vPerSide + 1 + s);
             }
 
             return CreateMesh(vertices, triangles);
+        }
+
+        public static UncheckedMesh CreateCollider(ProfileSection profile, float length)
+        {
+            var sides = ExtrudeSides(profile, length);
+            var caps = CreateCaps(profile, length);
+            var finalMesh = new UncheckedMesh(sides.verticies.Length + caps.verticies.Length, sides.triangles.Length + caps.triangles.Length);
+
+            for (int i = 0; i < sides.nVrt; i++)
+            {
+                finalMesh.verticies[i] = sides.verticies[i];
+                finalMesh.normals[i] = sides.normals[i];
+                finalMesh.tangents[i] = sides.tangents[i];
+                finalMesh.uv[i] = sides.uv[i];
+            }
+
+            for (int i = 0; i < caps.nVrt; i++)
+            {
+                finalMesh.verticies[sides.nVrt + i] = caps.verticies[i];
+                finalMesh.normals[sides.nVrt + i] = caps.normals[i];
+                finalMesh.tangents[sides.nVrt + i] = caps.tangents[i];
+                finalMesh.uv[sides.nVrt + i] = caps.uv[i];
+            }
+
+            for (int i = 0; i < sides.nTri; i++)
+            {
+                finalMesh.triangles[i] = sides.triangles[i];
+            }
+
+            for (int i = 0; i < caps.nTri; i++)
+            {
+                finalMesh.triangles[sides.nTri + i] = caps.triangles[i];
+            }
+
+            return finalMesh;
         }
 
         private static Vertex GetVertex(ProfilePoint pp, float y, float uv)
@@ -92,18 +153,19 @@ namespace ProceduralParts.Geometry
             return new Vertex(vp, vn, GetTangentFromNormal(vn), new Vector2(uv, y > 0 ? 0 : 1)); 
         }
 
-        private static Vertex GetVertex(ProfilePoint pp, float y, Vector2 uv)
-        {
-            var vp = new Vector3(pp.Position.x, y, pp.Position.y);
-            var vn = new Vector3(pp.Normal.x, 0, pp.Normal.y);
-            return new Vertex(vp, vn, GetTangentFromNormal(vn), uv);
-        }
+        //private static Vertex GetVertex(ProfilePoint pp, float y, Vector2 uv)
+        //{
+        //    var vp = new Vector3(pp.Position.x, y, pp.Position.y);
+        //    var vn = new Vector3(pp.Normal.x, 0, pp.Normal.y);
+        //    return new Vertex(vp, vn, GetTangentFromNormal(vn), uv);
+        //}
 
-        private static Vector4 GetTangentFromNormal(Vector3 normal)
+        private static Vector4 GetTangentFromNormal(Vector3 normal, bool top = true)
         {
             Vector3 t1 = Vector3.Cross(normal, Vector3.forward);
-            Vector3 t2 = Vector3.Cross(normal, Vector3.up);
-            return t1.magnitude > t2.magnitude ? t1 : t2;
+            Vector3 t2 = Vector3.Cross(normal, Vector3.up * (top ? 1f : -1f));
+            var final = t1.magnitude > t2.magnitude ? t1 : t2;
+            return new Vector4(final.x, final.y, final.z, -1);
         }
 
         private static UncheckedMesh CreateMesh(List<Vertex> vertices, List<int> triangleIndices)

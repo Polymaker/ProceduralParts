@@ -64,6 +64,7 @@ namespace ProceduralParts
                 LoadTextureSets();
             InitializeTextureSet();
         }
+
         public void Update()
         {
             if (HighLogic.LoadedSceneIsEditor)
