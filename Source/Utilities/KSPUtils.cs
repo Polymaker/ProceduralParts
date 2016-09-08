@@ -53,7 +53,48 @@ namespace KSPAPIExtensions
 		Any = 0xFFFF
 	}
 
-	public static class PartUtils
+    public static class PartModuleUtils
+    {
+        private static FieldInfo FieldListInfo;
+
+        public static void ReorderField(this PartModule module, BaseField field, int newIndex)
+        {
+            if (field == null)
+                return;
+            try
+            {
+                var fieldList = GetFieldList(module);
+                fieldList.Remove(field);
+
+                if (newIndex > fieldList.Count)
+                    fieldList.Add(field);
+                else
+                    fieldList.Insert(newIndex, field);
+            }
+            catch
+            {
+                return;
+            }
+            Debug.Log("Reordered field " + field.name + " to index " + newIndex + "!!");
+        }
+
+        private static List<BaseField> GetFieldList(PartModule module)
+        {
+            if (FieldListInfo == null)
+            {
+                FieldListInfo = typeof(BaseFieldList).GetField("_fields", BindingFlags.Instance | BindingFlags.NonPublic);
+            }
+
+            if (FieldListInfo != null)
+            {
+                return (List<BaseField>)FieldListInfo.GetValue(module.Fields);
+            }
+            return new List<BaseField>();
+        }
+    }
+
+
+    public static class PartUtils
 	{
 		private static FieldInfo windowListField;
 

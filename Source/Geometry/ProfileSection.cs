@@ -44,6 +44,8 @@ namespace ProceduralParts.Geometry
 
         public ProfileSection(params ProfilePoint[] points)
         {
+            if (points.Length == 0)
+                throw new Exception("Cannot create section with no points");
             _Points = points;
 
             CalculateSize();

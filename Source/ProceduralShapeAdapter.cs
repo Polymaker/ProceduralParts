@@ -123,7 +123,7 @@ namespace ProceduralParts
             var topSection = GetSideSection(topShape, topDiameter, (int)topPolySides, topIsInscribed);
             var bottomSection = GetSideSection(bottomShape, bottomDiameter, (int)bottomPolySides, bottomIsInscribed);
 
-            var partMesh = MeshBuilder.CreateProceduralMesh(topSection, bottomSection, 3);
+            var partMesh = MeshBuilder.CreateProceduralMesh(topSection, bottomSection, length, 3);
             Volume = partMesh.Volume;
 
             WriteMeshes(

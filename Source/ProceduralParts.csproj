@@ -105,12 +105,11 @@
     <Compile Include="Geometry\Vertex.cs" />
     <Compile Include="ICostModifier.cs" />
     <Compile Include="ObjectSerializer.cs" />
-    <Compile Include="ProceduralAdapter.cs" />
+    <Compile Include="ProceduralShapeAdapter.cs" />
     <Compile Include="ProceduralHeatshield.cs" />
     <Compile Include="ProceduralShapeBezierCone.cs" />
-    <Compile Include="ProceduralShapeMk2.cs" />
+    <Compile Include="ProceduralShapeExtruded.cs" />
     <Compile Include="ProceduralShapePill.cs" />
-    <Compile Include="ProceduralShapePrism.cs" />
     <Compile Include="ProceduralSRB.cs" />
     <Compile Include="ProceduralShapeCone.cs" />
     <Compile Include="ProceduralShapeCylinder.cs" />
@@ -123,10 +122,10 @@
     <Compile Include="Utilities\ListUtils.cs" />
     <Compile Include="Utilities\VectorUtils.cs" />
     <Compile Include="zzVersionChecker.cs" />
-    <Compile Include="KSPUtils.cs" />
+    <Compile Include="Utilities\KSPUtils.cs" />
     <Compile Include="Utilities\UnityUtils.cs" />
     <Compile Include="EngineWrapper.cs" />
-    <Compile Include="MathUtils.cs" />
+    <Compile Include="Utilities\MathUtils.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>

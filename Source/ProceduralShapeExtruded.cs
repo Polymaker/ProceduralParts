@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using UnityEngine;
+using KSPAPIExtensions;
 
 namespace ProceduralParts
 {
@@ -13,9 +14,9 @@ namespace ProceduralParts
 
         private string[] ShapeNames = new string[] { "Polygon", "Mk2", "Mk3" };
 
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Shape"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Profile"),
          UI_ChooseOption(scene = UI_Scene.Editor)]
-        public string extrudeShape;
+        public string extrudeShape = "Polygon";
         private string oldExtrudeShape;
 
         [KSPField(isPersistant = true, guiActiveEditor = false, guiActive = false, guiName = "Sides", guiFormat = "0"),
@@ -48,6 +49,8 @@ namespace ProceduralParts
             UI_ChooseOption shapeEdit = (UI_ChooseOption)Fields["extrudeShape"].uiControlEditor;
             shapeEdit.options = ShapeNames;
             UpdateTechConstraints();
+
+            this.ReorderField(Fields["costDisplay"], 10);
         }
 
         #region Shape
@@ -71,19 +74,24 @@ namespace ProceduralParts
                 new CircleSection(diameter, -0.5f * length, 0f, norm),
                 new CircleSection(diameter, 0.5f * length, 1f, norm)
                 );
+            try
+            {
+                var extrudeProfile = GetSideSection(extrudeShape, diameter, (int)polySides, isInscribed);
 
-            var extrudeProfile = GetSideSection(extrudeShape, diameter, (int)polySides, isInscribed);
+                var extrudeMesh = MeshBuilder.CreateProceduralMesh(extrudeProfile, length);
 
-            var extrudeMesh = MeshBuilder.CreateProceduralMesh(extrudeProfile, length);
+                Volume = extrudeMesh.Volume;
 
-            Volume = extrudeMesh.Volume;
-
-            WriteMeshes(
-                extrudeMesh.SidesMesh,
-                extrudeMesh.CapsMesh,
-                extrudeMesh.ColliderMesh
-                );
-
+                WriteMeshes(
+                    extrudeMesh.SidesMesh,
+                    extrudeMesh.CapsMesh,
+                    extrudeMesh.ColliderMesh
+                    );
+            }
+            catch (Exception ex)
+            {
+                Debug.LogException(ex);
+            }
             oldDiameter = diameter;
             oldLength = length;
             oldPolySides = polySides;
@@ -157,7 +165,7 @@ namespace ProceduralParts
             topDiameterEdit.minValue = PPart.diameterMin;
             diameter = Mathf.Clamp(diameter, topDiameterEdit.minValue, topDiameterEdit.maxValue);
 
-            UI_FloatEdit topSidesEdit = (UI_FloatEdit)Fields["extrudeShape"].uiControlEditor;
+            UI_FloatEdit topSidesEdit = (UI_FloatEdit)Fields["polySides"].uiControlEditor;
             topSidesEdit.maxValue = 12f;
             topSidesEdit.minValue = 3f;
             topSidesEdit.incrementLarge = 1f;

@@ -17,10 +17,10 @@ namespace Tests
             var cylinderProfile = ProfileSection.GetCylinderSection(1.25f, 64);
             var mk2Profile = ProfileSection.GetMk2Section(1.5f);
             var mk3Profile = ProfileSection.GetMk3Section(3.75f);
-            var prismProfile = ProfileSection.GetPrismSection(8, 0.625f);
+            var prismProfile = ProfileSection.GetPrismSection(4, 1.25f);
             //var adapt1 = ProfileSection.CreateAdapter(cylinderProfile, prismProfile);
             //var adapt2 = ProfileSection.CreateAdapter(prismProfile, cylinderProfile);
-            var baseMesh = MeshBuilder.CreateAdapterSides(cylinderProfile, prismProfile, 2f);
+            var baseMesh = MeshBuilder.CreateProceduralMesh(prismProfile, 2f);
             //var capsMesh = MeshBuilder.CreateCaps(mk3Profile, mk2Profile, 2f);
             //var colMesh = MeshBuilder.MergeMeshes(baseMesh, capsMesh);
 
