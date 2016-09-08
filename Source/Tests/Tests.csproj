@@ -39,7 +39,6 @@
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="System.Data" />
-    <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml" />
     <Reference Include="Assembly-CSharp">
       <HintPath>..\..\Build\ProceduralParts\Release\Assembly-CSharp.dll</HintPath>

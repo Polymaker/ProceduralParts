@@ -99,6 +99,7 @@
     <Compile Include="DecouplerTweaker.cs" />
     <Compile Include="Geometry\Angle.cs" />
     <Compile Include="Geometry\MeshBuilder.cs" />
+    <Compile Include="Geometry\ProceduralMesh.cs" />
     <Compile Include="Geometry\ProfilePoint.cs" />
     <Compile Include="Geometry\ProfileSection.cs" />
     <Compile Include="Geometry\Vertex.cs" />
@@ -129,17 +130,21 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>IF "$(ConfigurationName)"  == "Test KSP" (
+    <PostBuildEvent>REM set kspPPPath = "D:\Steam\SteamApps\common\Kerbal Space Program\GameData\ProceduralParts\"
+set kspPPPath=D:\Games\Steam\steamapps\common\Kerbal Space Program\GameData\ProceduralParts\
+
+IF "$(ConfigurationName)"  == "Test KSP" (
 	copy /Y "$(TargetPath)" "..\..\..\Plugins\"
 	cd ..\..\..
+	
 	for %25%25I in ("Plugins\*.dll") do (
 	echo "Copying " %25%25I
-	copy %25%25I "D:\Steam\SteamApps\common\Kerbal Space Program\GameData\ProceduralParts\Plugins\"
+	copy %25%25I "%25kspPPPath%25Plugins\"
 	)
 	cd Parts
 	for /R %25%25I in (*) do (
 	echo "Copying " %25%25I
-	copy %25%25I "D:\Steam\SteamApps\common\Kerbal Space Program\GameData\ProceduralParts\Parts\"
+	copy %25%25I "%25kspPPPath%25Parts\"
 	)
 )</PostBuildEvent>
   </PropertyGroup>

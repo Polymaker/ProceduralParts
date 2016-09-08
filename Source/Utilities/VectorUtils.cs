@@ -28,5 +28,14 @@ namespace ProceduralParts
         {
             return (v2 - v1).magnitude < float.Epsilon;
         }
+
+        public static Vector2 SlerpNormal(Vector2 n1, Vector2 n2, float t)
+        {
+            if (n1 == n2)
+                return n1;
+            float omega = Mathf.Acos(Vector2.Dot(n1, n2));
+            float sinOmega = Mathf.Sin(omega);
+            return Mathf.Sin(omega * (1f - t)) / sinOmega * n1 + Mathf.Sin(omega * t) / sinOmega * n2;
+        }
     }
 }

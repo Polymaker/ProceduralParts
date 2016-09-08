@@ -12,25 +12,25 @@ namespace ProceduralParts
 
         #region Properties (fields)
 
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Diameter", guiFormat = "F3", guiUnits = "m"),
-         UI_FloatEdit(scene = UI_Scene.Editor, incrementSlide = 0.001f, sigFigs = 3, unit = "m", useSI = true)]
-        public float diameter = 1.25f;
-        private float oldDiameter;
-
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Length", guiFormat = "F3", guiUnits = "m"),
-         UI_FloatEdit(scene = UI_Scene.Editor, incrementSlide = 0.001f, sigFigs = 3, unit = "m", useSI = true)]
-        public float length = 1f;
-        private float oldLength;
-
         [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Sides", guiFormat = "0"),
          UI_FloatEdit(scene = UI_Scene.Editor)]
         public float sides = 4f;
         private float oldSides;
 
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Diameter", guiFormat = "F3", guiUnits = "m"),
+         UI_FloatEdit(scene = UI_Scene.Editor, incrementSlide = 0.001f, sigFigs = 3, unit = "m", useSI = true)]
+        public float diameter = 1.25f;
+        private float oldDiameter;
+
         [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Mode:"),
          UI_Toggle(disabledText = "Circumscribed", enabledText = "Inscribed")]
         public bool isInscribed = false;
         private bool oldIsInscribed;
+
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Length", guiFormat = "F3", guiUnits = "m"),
+         UI_FloatEdit(scene = UI_Scene.Editor, incrementSlide = 0.001f, sigFigs = 3, unit = "m", useSI = true)]
+        public float length = 1f;
+        private float oldLength;
 
         #endregion
 

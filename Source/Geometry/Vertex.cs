@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using UnityEngine;
 
 namespace ProceduralParts.Geometry
 {
+    [DebuggerDisplay("Pos = {Pos} UV = {Uv}")]
     class Vertex
     {
         public Vector3 Pos { get; set; }
@@ -27,6 +29,16 @@ namespace ProceduralParts.Geometry
             Norm = norm;
             Tan = tan;
             Uv = uv;
+        }
+
+        public override string ToString()
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("Pos = " + Pos);
+            sb.AppendLine("Norm = " + Norm);
+            sb.AppendLine("Tan = " + Tan);
+            sb.AppendLine("Uv = " + Uv);
+            return sb.ToString();
         }
     }
 }

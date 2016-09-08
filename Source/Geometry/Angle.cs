@@ -159,9 +159,8 @@ namespace ProceduralParts.Geometry
         {
             if (IsNormalized)
                 return this;
-            return Angle.FromDegrees(NormalizeDegrees(_Degrees));
+            return FromDegrees(NormalizeDegrees(_Degrees));
         }
-
 
         public Angle DeltaAngle(Angle other)
         {
@@ -173,21 +172,12 @@ namespace ProceduralParts.Geometry
             a1.Normalize();
             a2.Normalize();
             var delta = Max(a1, a2) - Min(a1, a2);
-            return delta.Degrees <= 180 ? delta : Angle.FromDegrees(360f) - delta;
+            return delta.Degrees <= 180 ? delta : FromDegrees(360f - delta.Degrees).Normalized();
         }
 
-        public Angle Dist(Angle other)
+        public Angle Distance(Angle other)
         {
-
             return Distance(this, other);
-            //var angle1 = NormalizeDegrees(Degrees);
-            //var angle2 = NormalizeDegrees(other.Degrees);
-            //if (angle2 > angle1)
-            //{
-            //    return Angle.FromDegrees(angle2 - angle1);
-            //}
-            //return Angle.FromDegrees((360f - angle1) + angle2);
-            //return Angle.FromDegrees(Math.Abs((Normalized() - other.Normalized()).Degrees));
         }
 
         public static Angle Distance(Angle a1, Angle a2)
@@ -216,20 +206,24 @@ namespace ProceduralParts.Geometry
         {
             a1.Normalize();
             a2.Normalize();
-            if (Math.Abs(a1.Degrees - a2.Degrees) <= float.Epsilon)
-                return false;
+
+            var a3 = Normalized();
+            if (a1 == a2)
+                return a1 == a3;
+
             var delta = (a2 - a1).Normalized();
-            if (delta.Degrees >= 359f)
+
+            if (delta.Degrees > 355f)
                 return false;
 
             if (a1.Degrees + delta.Degrees > 360f || a2.Degrees - delta.Degrees < 0)
             {
                 var start1 = a1; var end1 = a1 + delta;
                 var start2 = a2 - delta; var end2 = a2;
-                return (this >= start1 && this <= end1) || (this >= start2 && this <= end2);
+                return (a3 >= start1 && a3 <= end1) || (a3 >= start2 && a3 <= end2);
             }
 
-            return this >= a1 && this <= a2;
+            return a3 >= a1 && a3 <= a2;
         }
 
         #region Convertion
@@ -249,6 +243,8 @@ namespace ProceduralParts.Geometry
         public static float NormalizeDegrees(float degrees)
         {
             degrees = degrees % 360f;
+            if (Math.Abs(degrees) <= float.Epsilon)
+                return 0f;
             if (degrees < 0f)
                 degrees += 360f;
             return degrees;

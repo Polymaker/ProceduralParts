@@ -40,7 +40,9 @@ namespace ProceduralParts.Geometry
             }
         }
 
-        public float UV { get; set; }
+        public float SideUV { get; set; }
+
+        public Vector2 TopUV { get; set; }
 
         public Angle RadialAngle
         {
@@ -56,7 +58,7 @@ namespace ProceduralParts.Geometry
         }
 
         /// <summary>
-        /// Radial angle 
+        /// Radial angle offseted by vertex normal. Used to correctly order vertices with the same position.
         /// </summary>
         public Angle NormalizedRadial
         {
@@ -91,7 +93,7 @@ namespace ProceduralParts.Geometry
         {
             Position = position;
             Normal = normal;
-            UV = 0f;
+            SideUV = 0f;
             angleIsDirty = true;
         }
 
@@ -99,19 +101,16 @@ namespace ProceduralParts.Geometry
         {
             Position = position;
             Normal = normal;
-            UV = uV;
+            SideUV = uV;
             angleIsDirty = true;
         }
 
         private Angle GetRadialAngle(bool includeNormal = false)
         {
-            //if (!angleIsDirty)
-            //    return _RadialAngle;
             var normPos = includeNormal? (Position * 10 + Normal) : Position;
             //y is used as z when bulding the mesh and in Unity, forward is -Z, so we flip y
             var radialAngle = Angle.FromRadians(Mathf.Atan2(-normPos.y, normPos.x));
             radialAngle.Normalize();
-            //angleIsDirty = false;
             return radialAngle;
         }
 
@@ -132,9 +131,9 @@ namespace ProceduralParts.Geometry
             return new ProfilePoint(Position, Normal) { _RadialAngle = RadialAngle, angleIsDirty = false };
         }
 
-        public static ProfilePoint Interpolate(ProfilePoint p1, ProfilePoint p2, float delta)
+        public static ProfilePoint Interpolate(ProfilePoint p1, ProfilePoint p2, float t)
         {
-            return new ProfilePoint(Vector2.Lerp(p1.Position, p2.Position, delta), Vector2.Lerp(p1.Normal, p2.Normal, delta));
+            return new ProfilePoint(Vector2.Lerp(p1.Position, p2.Position, t), VectorUtils.SlerpNormal(p1.Normal, p2.Normal, t));
         }
     }
 }

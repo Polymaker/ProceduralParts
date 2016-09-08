@@ -8,8 +8,9 @@ using UnityEngine;
 
 namespace ProceduralParts
 {
-    public class ProceduralAdapter : ProceduralAbstractSoRShape
+    public class ProceduralShapeAdapter : ProceduralAbstractSoRShape
     {
+
         #region Properties (fields)
 
         private string[] ShapeNames = new string[] { "Cylinder", "Polygon", "Mk2", "Mk3" };
@@ -95,18 +96,6 @@ namespace ProceduralParts
             }
         }
 
-        private float CalcVolume()
-        {
-            return 1f;
-            //float theta = (Mathf.PI * 2f) / (float)sides;
-            //float radius = diameter / 2f;
-
-            //float tHeight = isInscribed ? radius : radius * Mathf.Cos(theta / 2f);
-            //float tBase = 2f * tHeight * Mathf.Tan(theta / 2f);
-
-            //return ((tHeight * tBase / 2f) * sides) * length;
-        }
-
         protected override void UpdateShape(bool force)
         {
             if (!force && 
@@ -120,34 +109,29 @@ namespace ProceduralParts
                 oldTopPolySides == topPolySides &&
                 oldTopShape == topShape)
                 return;
-            try
-            {
-                CheckEditors();
 
-                Volume = CalcVolume();
+            CheckEditors();
+            CheckSnapMk2Diameter();
 
-                Vector2 norm = new Vector2(length, (bottomDiameter - topDiameter) / 2f);
-                norm.Normalize();
-                UpdateMeshNodesSizes(
-                    new CircleSection(bottomDiameter, -0.5f * length, 0f, norm),
-                    new CircleSection(topDiameter, 0.5f * length, 1f, norm)
-                    );
+            Vector2 norm = new Vector2(length, (bottomDiameter - topDiameter) / 2f).normalized;
 
-                var topSection = GetSideSection(topShape, topDiameter, (int)topPolySides, topIsInscribed);
-                var bottomSection = GetSideSection(bottomShape, bottomDiameter, (int)bottomPolySides, bottomIsInscribed);
-                var baseMesh = MeshBuilder.CreateAdapterSides(bottomSection, topSection, length);
-                var capsMesh = MeshBuilder.CreateCaps(bottomSection, topSection, length);
+            UpdateMeshNodesSizes(
+                new CircleSection(bottomDiameter, -0.5f * length, 0f, norm),
+                new CircleSection(topDiameter, 0.5f * length, 1f, norm)
+                );
 
-                WriteMeshes(
-                    baseMesh,
-                    capsMesh,
-                    MeshBuilder.MergeMeshes(baseMesh, capsMesh)
-                    );
-            }
-            catch (Exception ex)
-            {
-                Debug.LogException(ex);
-            }
+            var topSection = GetSideSection(topShape, topDiameter, (int)topPolySides, topIsInscribed);
+            var bottomSection = GetSideSection(bottomShape, bottomDiameter, (int)bottomPolySides, bottomIsInscribed);
+
+            var partMesh = MeshBuilder.CreateProceduralMesh(topSection, bottomSection, 3);
+            Volume = partMesh.Volume;
+
+            WriteMeshes(
+                partMesh.SidesMesh,
+                partMesh.CapsMesh,
+                partMesh.ColliderMesh
+                );
+
             oldTopDiameter = topDiameter;
             oldBottomDiameter = bottomDiameter;
             oldLength = length;
@@ -159,6 +143,23 @@ namespace ProceduralParts
             oldTopShape = topShape;
 
             UpdateInterops();
+        }
+
+        private void CheckSnapMk2Diameter()
+        {
+            if (oldBottomShape != bottomShape &&
+                    bottomShape == "Mk2" &&
+                    bottomDiameter == 1.25f)
+            {
+                bottomDiameter = 1.5f;
+            }
+
+            if (oldTopShape != topShape &&
+                topShape == "Mk2" &&
+                topDiameter == 1.25f)
+            {
+                topDiameter = 1.5f;
+            }
         }
 
         public override void UpdateTechConstraints()

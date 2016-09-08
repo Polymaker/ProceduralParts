@@ -9,9 +9,10 @@ namespace ProceduralParts.Geometry
     public class ProfileSection
     {
         // Fields...
+        private float _SurfaceArea;
         private float _Perimeter;
-        private readonly float _Height;
-        private readonly float _Width;
+        private float _Height;
+        private float _Width;
         private readonly ProfilePoint[] _Points;
 
         public ProfilePoint[] Points
@@ -34,31 +35,84 @@ namespace ProceduralParts.Geometry
             get { return _Perimeter; }
         }
 
+        public float SurfaceArea
+        {
+            get { return _SurfaceArea; }
+        }
+        
         public int PointCount { get { return _Points.Length; } }
 
         public ProfileSection(params ProfilePoint[] points)
         {
             _Points = points;
 
-            for (int i = 0; i < _Points.Length; i++)
-            {
-                _Points[i].ListIndex = i;
-                _Points[i].Section = this;
-            }
-
-            var xMin = _Points.Min(p => p.Position.x);
-            var xMax = _Points.Max(p => p.Position.x);
-            var yMin = _Points.Min(p => p.Position.y);
-            var yMax = _Points.Max(p => p.Position.y);
+            CalculateSize();
             
-            _Width = Mathf.Abs(xMax - xMin);
-            _Height = Mathf.Abs(yMax - yMin);
-            for (int i = 1; i <= _Points.Length; i++)
-                _Perimeter += (_Points[i - 1].Position - _Points[i % _Points.Length].Position).magnitude;
+            InitializePoints();
+
+            CalculateTopUVs();
         }
 
         public ProfileSection(IEnumerable<ProfilePoint> points)
             : this(points.ToArray()) { }
+
+        private void CalculateSize()
+        {
+            var xMin = _Points.Min(p => p.Position.x);
+            var xMax = _Points.Max(p => p.Position.x);
+            var yMin = _Points.Min(p => p.Position.y);
+            var yMax = _Points.Max(p => p.Position.y);
+
+            _Width = Mathf.Abs(xMax - xMin);
+            _Height = Mathf.Abs(yMax - yMin);
+        }
+
+        private void InitializePoints()
+        {
+            bool calculateUV = _Points.All(pp => pp.SideUV == 0);
+            for (int i = 0; i < _Points.Length; i++)
+            {
+                var curPoint = _Points[i];
+                curPoint.ListIndex = i;
+                curPoint.Section = this;
+                if (calculateUV)
+                    curPoint.SideUV = _Perimeter;
+                _Perimeter += (curPoint.Next.Position - curPoint.Position).magnitude;
+                _SurfaceArea += GetSurfaceArea(curPoint);
+            }
+
+            if (calculateUV)
+            {
+                for (int i = 0; i < _Points.Length; i++)
+                    _Points[i].SideUV = Mathf.Clamp(_Points[i].SideUV / _Perimeter, 0f, 1f);
+                _Points[0].SideUV = 0f;
+                _Points[PointCount - 1].SideUV = 1f;
+            }
+        }
+
+        private void CalculateTopUVs()
+        {
+            var centerOffset = new Vector2(Width / 2f, Height / 2f);
+            var maxSize = Mathf.Max(Width, Height);
+            var uvOffset = new Vector2((maxSize - Width) / 2f, (maxSize - Height) / 2f);
+
+            for (int i = 0; i < _Points.Length; i++)
+            {
+                var curPoint = _Points[i];
+                curPoint.TopUV = new Vector2(
+                    (curPoint.Position.x + centerOffset.x + uvOffset.x) / maxSize, 
+                    (curPoint.Position.y + centerOffset.y + uvOffset.y) / maxSize);
+            }
+        }
+
+        private float GetSurfaceArea(ProfilePoint point)
+        {
+            var a = point.Position.magnitude;
+            var b = point.Next.Position.magnitude;
+            var c = (point.Next.Position - point.Position).magnitude;
+            var p = (a + b + c) / 2f;
+            return Mathf.Sqrt(p * (p - a) * (p - b) * (p - c));
+        }
 
         public static ProfileSection CreateSorted(params ProfilePoint[] points)
         {
@@ -96,7 +150,7 @@ namespace ProceduralParts.Geometry
         public ProfilePoint GetPointAtAngle(Angle angle)
         {
             var edge = GetEdge(angle);
-            var dist = edge.P1.RadialAngle.Dist(angle);
+            var dist = edge.P1.RadialAngle.Distance(angle);
             if (Math.Abs(dist.Degrees) < float.Epsilon)
                 return edge.P1.Clone();
             var delta = dist.Degrees / edge.ArcDelta.Degrees;
@@ -108,7 +162,7 @@ namespace ProceduralParts.Geometry
         private static ProfilePoint InterpolatePoint(ProfileEdge edge, Angle targetAngle, float delta, int iteration)
         {
             var ip = ProfilePoint.Interpolate(edge.P1, edge.P2, delta);
-            var angleDist = ip.RadialAngle.Dist(targetAngle);
+            var angleDist = ip.RadialAngle.Distance(targetAngle);
             if (Mathf.Abs(angleDist.Degrees) <= 0.001f/* || iteration > 3*/)
                 return ip;
             if (iteration > 4)
@@ -121,27 +175,46 @@ namespace ProceduralParts.Geometry
         
         public static ProfileSection CreateAdapter(ProfileSection section1, ProfileSection section2)
         {
+            if (section1 == section2)
+                return section1;
+
             var finalPoints = new List<ProfilePoint>();
 
             var combinedPoints = new List<ProfilePoint>();
             combinedPoints.AddRange(section1.Points);
             combinedPoints.AddRange(section2.Points);
             var radialAngles = combinedPoints.Select(cp => cp.RadialAngle).ToList();
-            //var step = 4;
-            //var stepAngle = 360f / (float)step;
-            //radialAngles.AddRange(Enumerable.Range(0, step).Select(i => Angle.FromDegrees(stepAngle * i)));
+
             radialAngles.Add(Angle.Zero);
             radialAngles = radialAngles.OrderBy(a => a).ToList();
-            radialAngles = radialAngles.RemoveDoubles((x, y) => Angle.DeltaAngle(x, y).Degrees < 1).ToList();
-            //radialAngles = radialAngles.RemoveDoubles((x, y) => Angle.DeltaAngle(x, y).Degrees < 1).ToList();
+            radialAngles = radialAngles.RemoveDoubles((x, y) => Angle.DeltaAngle(x, y).Degrees < 0.5f).ToList();
+
 
             for (int i = 0; i < radialAngles.Count; i++)
             {
                 var currentAngle = radialAngles[i];
-                finalPoints.Add(section1.GetPointAtAngle(currentAngle));
+                var pointsAtAngle = combinedPoints.Where(cp => Mathf.Abs(cp.RadialAngle.Distance(currentAngle).Degrees) < 1f).ToList();
+                var section1HardVert = pointsAtAngle.Where(cp => cp.Section == section1).Count() >= 2;
+                var section2HardVert = pointsAtAngle.Where(cp => cp.Section == section2).Count() >= 2;
+                //by 'hard vertices' I mean vertices at the same position but have different normals
+
+                if (section1HardVert)
+                {
+                    var section1Pts = pointsAtAngle.Where(cp => cp.Section == section1);
+                    finalPoints.Add(section1Pts.First().Clone());
+                    finalPoints.Add(section1Pts.Last().Clone());
+                }
+                else if (section2HardVert && !section1HardVert)
+                {
+                    var section2Pts = pointsAtAngle.Where(cp => cp.Section == section2);
+                    finalPoints.Add(section1.GetPointAtAngle(section2Pts.First().RadialAngle));
+                    finalPoints.Add(section1.GetPointAtAngle(section2Pts.Last().RadialAngle));
+                }
+                else
+                    finalPoints.Add(section1.GetPointAtAngle(currentAngle));
             }
 
-            finalPoints.Add(finalPoints[0]);
+            finalPoints.Add(finalPoints[0].Clone());
             return new ProfileSection(finalPoints.ToArray());
         }
 
