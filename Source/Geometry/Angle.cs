@@ -170,15 +170,36 @@ namespace ProceduralParts.Geometry
 
         public static Angle DeltaAngle(Angle a1, Angle a2)
         {
-            var angle1 = a1.Normalized().Degrees;
-            var angle2 = a2.Normalized().Degrees;
-            var deltaAngle = angle2 > angle1 ? angle2 - angle1 : angle1 - angle2;
-            return Angle.FromDegrees(deltaAngle> 180f ? 360f - deltaAngle : deltaAngle);
+            a1.Normalize();
+            a2.Normalize();
+            var delta = Max(a1, a2) - Min(a1, a2);
+            return delta.Degrees <= 180 ? delta : Angle.FromDegrees(360f) - delta;
         }
 
         public Angle Dist(Angle other)
         {
-            return Angle.FromDegrees(Math.Abs((Normalized() - other.Normalized()).Degrees));
+
+            return Distance(this, other);
+            //var angle1 = NormalizeDegrees(Degrees);
+            //var angle2 = NormalizeDegrees(other.Degrees);
+            //if (angle2 > angle1)
+            //{
+            //    return Angle.FromDegrees(angle2 - angle1);
+            //}
+            //return Angle.FromDegrees((360f - angle1) + angle2);
+            //return Angle.FromDegrees(Math.Abs((Normalized() - other.Normalized()).Degrees));
+        }
+
+        public static Angle Distance(Angle a1, Angle a2)
+        {
+            a1.Normalize();
+            a2.Normalize();
+            
+            if (a2 < a1 && (a1 - a2).Degrees > 180f)
+            {
+                a2 = a1 + DeltaAngle(a1, a2);
+            }
+            return a2 - a1;
         }
 
         public static Angle Max(Angle angle1, Angle angle2)
@@ -189,6 +210,26 @@ namespace ProceduralParts.Geometry
         public static Angle Min(Angle angle1, Angle angle2)
         {
             return angle1 < angle2 ? angle1 : angle2;
+        }
+
+        public bool IsBetween(Angle a1, Angle a2)
+        {
+            a1.Normalize();
+            a2.Normalize();
+            if (Math.Abs(a1.Degrees - a2.Degrees) <= float.Epsilon)
+                return false;
+            var delta = (a2 - a1).Normalized();
+            if (delta.Degrees >= 359f)
+                return false;
+
+            if (a1.Degrees + delta.Degrees > 360f || a2.Degrees - delta.Degrees < 0)
+            {
+                var start1 = a1; var end1 = a1 + delta;
+                var start2 = a2 - delta; var end2 = a2;
+                return (this >= start1 && this <= end1) || (this >= start2 && this <= end2);
+            }
+
+            return this >= a1 && this <= a2;
         }
 
         #region Convertion

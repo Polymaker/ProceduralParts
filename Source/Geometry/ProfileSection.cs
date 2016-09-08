@@ -95,59 +95,67 @@ namespace ProceduralParts.Geometry
 
         public ProfilePoint GetPointAtAngle(Angle angle)
         {
-            if (Points.Any(p => p.RadialAngle.DeltaAngle(angle).Degrees < 1))
-                return GetClosestToAngle(angle).Clone();
-            var edge = GetEdge(angle.Radians);
-            var delta = angle.DeltaAngle(edge.P1.RadialAngle) / edge.ArcDelta;
+            var edge = GetEdge(angle);
+            var dist = edge.P1.RadialAngle.Dist(angle);
+            if (Math.Abs(dist.Degrees) < float.Epsilon)
+                return edge.P1.Clone();
+            var delta = dist.Degrees / edge.ArcDelta.Degrees;
+            var result = InterpolatePoint(edge, angle, delta, 0);
+            
+            return result;
+        }
 
-            return ProfilePoint.Interpolate(edge.P1,edge.P2, delta);
+        private static ProfilePoint InterpolatePoint(ProfileEdge edge, Angle targetAngle, float delta, int iteration)
+        {
+            var ip = ProfilePoint.Interpolate(edge.P1, edge.P2, delta);
+            var angleDist = ip.RadialAngle.Dist(targetAngle);
+            if (Mathf.Abs(angleDist.Degrees) <= 0.001f/* || iteration > 3*/)
+                return ip;
+            if (iteration > 4)
+                return ip;
+            delta += angleDist.Degrees / edge.ArcDelta.Degrees;
+            return InterpolatePoint(edge, targetAngle, delta ,++iteration);
         }
 
         #region Section Combining
+        
         public static ProfileSection CreateAdapter(ProfileSection section1, ProfileSection section2)
         {
-            var angleError = Angle.FromDegrees(2); 
-
             var finalPoints = new List<ProfilePoint>();
 
             var combinedPoints = new List<ProfilePoint>();
             combinedPoints.AddRange(section1.Points);
             combinedPoints.AddRange(section2.Points);
-            combinedPoints = combinedPoints.OrderBy(pp => pp.RadialAngle).ToList();
-            var radialAngles = combinedPoints.Select(cp => cp.RadialAngle).RemoveDoubles((x,y) => Angle.DeltaAngle(x, y) < angleError).ToList();
+            var radialAngles = combinedPoints.Select(cp => cp.RadialAngle).ToList();
+            //var step = 4;
+            //var stepAngle = 360f / (float)step;
+            //radialAngles.AddRange(Enumerable.Range(0, step).Select(i => Angle.FromDegrees(stepAngle * i)));
+            radialAngles.Add(Angle.Zero);
+            radialAngles = radialAngles.OrderBy(a => a).ToList();
+            radialAngles = radialAngles.RemoveDoubles((x, y) => Angle.DeltaAngle(x, y).Degrees < 1).ToList();
+            //radialAngles = radialAngles.RemoveDoubles((x, y) => Angle.DeltaAngle(x, y).Degrees < 1).ToList();
 
             for (int i = 0; i < radialAngles.Count; i++)
             {
                 var currentAngle = radialAngles[i];
-                var pointsAtAngle = combinedPoints.Where(cp => cp.RadialAngle.DeltaAngle(currentAngle) < angleError).ToList();
-                if (pointsAtAngle.All(p => p.Section == section1))
-                    finalPoints.AddRange(pointsAtAngle.Select(p => p.Clone()));
-                else
-                {
-                    if (pointsAtAngle.All(p => p.Section == section2))
-                    {
-                        finalPoints.AddRange(pointsAtAngle.Select(pa => section1.GetPointAtAngle(pa.RadialAngle)));
-                    }
-                    else if (pointsAtAngle.Count == 2)//both profiles haves a point at about the same angle
-                    {
-                        finalPoints.Add(section1.GetPointAtAngle(pointsAtAngle.First().RadialAngle));
-                    }
-                    else if (pointsAtAngle.Count == 3)
-                    {
-                        if(pointsAtAngle.Count(p => p.Section == section1) == 2)
-                            finalPoints.AddRange(pointsAtAngle.Where(pa => pa.Section == section1).Select(p => p.Clone()));
-                        else
-                            finalPoints.AddRange(pointsAtAngle.Where(pa => pa.Section == section2).Select(p => section1.GetPointAtAngle(p.RadialAngle)));
-                    }
-                    else
-                    {
-                        finalPoints.AddRange(pointsAtAngle.Where(pa => pa.Section == section1).Select(p => p.Clone()));
-                    }
-                }
-                combinedPoints.RemoveAll(cp => pointsAtAngle.Contains(cp));
+                finalPoints.Add(section1.GetPointAtAngle(currentAngle));
             }
 
+            finalPoints.Add(finalPoints[0]);
             return new ProfileSection(finalPoints.ToArray());
+        }
+
+        public static ProfileSection Lerp(ProfileSection section1, ProfileSection section2, float t)
+        {
+            if (section1.PointCount != section2.PointCount)
+                throw new InvalidOperationException();
+            var finalPoints = new List<ProfilePoint>();
+
+            for (int i = 0; i < section1.PointCount; i++)
+            {
+                finalPoints.Add(ProfilePoint.Interpolate(section1.Points[i], section2.Points[i], t));
+            }
+            return new ProfileSection(finalPoints);
         }
 
         private class ProfileEdge
@@ -169,33 +177,18 @@ namespace ProceduralParts.Geometry
                 P2 = p2;
             }
         }
-        
 
-        private ProfileEdge GetEdge(float angleRad)
+        private ProfileEdge GetEdge(Angle angle)
         {
-            var angle = Angle.FromRadians(angleRad).Normalized();
-
-            var pt1 = GetClosestToAngle(angle);
-            var prevVert = pt1.Previous;
-            if (prevVert.Position.CloseTo(pt1.Position))
-                prevVert = prevVert.Previous;
-            var nextVert = pt1.Next;
-            if (nextVert.Position.CloseTo(pt1.Position))
-                nextVert = nextVert.Next;
-            var leftDiff = angle.DeltaAngle(prevVert.RadialAngle);
-            var rightDiff = angle.DeltaAngle(nextVert.RadialAngle);
-            if (leftDiff < rightDiff)
-                return new ProfileEdge(pt1, prevVert);
-            return new ProfileEdge(pt1, nextVert);
-        }
-
-        private ProfilePoint GetClosestToAngle(Angle angle)
-        {
-            return Points.OrderBy(p => angle.DeltaAngle(p.NormalizedRadial)).First();
+            foreach (var pp in Points)
+            {
+                if (angle.IsBetween(pp.RadialAngle, pp.Next.RadialAngle))
+                    return new ProfileEdge(pp, pp.Next);
+            }
+            return null;
         }
 
         #endregion
-
 
         #region Hard coded Profiles
 
@@ -300,7 +293,7 @@ namespace ProceduralParts.Geometry
             {
                 var curAngle = theta * s;
                 var norm = ProfilePoint.GetPoint(curAngle, 1f);
-                points.Add(new ProfilePoint(ProfilePoint.GetPoint(curAngle, diameter), norm, s / (float)resolution));
+                points.Add(new ProfilePoint(ProfilePoint.GetPoint(curAngle, diameter / 2f), norm, s / (float)resolution));
             }
             return new ProfileSection(points.ToArray());
         }

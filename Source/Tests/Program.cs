@@ -12,17 +12,28 @@ namespace Tests
     {
         static void Main(string[] args)
         {
+            
+            var testAngle = Angle.FromDegrees(352).IsBetween(Angle.FromDegrees(331), Angle.FromDegrees(28));
             var cylinderProfile = ProfileSection.GetCylinderSection(1.25f, 64);
-            var prismProfile = ProfileSection.GetPrismSection(6, 0.625f);
-            var baseMesh = MeshBuilder.CreateAdapterSides(cylinderProfile, prismProfile, 2f);
-            var capsMesh = MeshBuilder.CreateCaps(cylinderProfile, prismProfile, 2f);
-            var colMesh = MeshBuilder.MergeMeshes(baseMesh, capsMesh);
-            var test = capsMesh.triangles.Where(t => t > capsMesh.nVrt);
-            //var adapterProfile = ProfileSection.CreateAdapter(prismProfile, cylinderProfile);
-            //foreach (var point in adapterProfile.Points)
-            //{
-            //    Trace.WriteLine(string.Format("{0} {1} at {2}", point.Position, point.Normal, point.NormalizedRadial));
-            //}
+            var mk2Profile = ProfileSection.GetMk2Section(1.5f);
+            var mk3Profile = ProfileSection.GetMk3Section(3.75f);
+            var prismProfile = ProfileSection.GetPrismSection(8, 0.625f);
+            var adapt1 = ProfileSection.CreateAdapter(mk2Profile, mk3Profile);
+            var adapt2 = ProfileSection.CreateAdapter(mk3Profile, mk2Profile);
+            //var baseMesh = MeshBuilder.CreateAdapterSides(cylinderProfile, prismProfile, 2f);
+            //var capsMesh = MeshBuilder.CreateCaps(mk3Profile, mk2Profile, 2f);
+            //var colMesh = MeshBuilder.MergeMeshes(baseMesh, capsMesh);
+
+ 
+            foreach (var point in adapt1.Points)
+            {
+                Trace.WriteLine(string.Format("{0} {1} at {2}", point.Position, point.Normal, point.RadialAngle));
+            }
+            Trace.WriteLine("");
+            foreach (var point in adapt2.Points)
+            {
+                Trace.WriteLine(string.Format("{0} {1} at {2}", point.Position, point.Normal, point.RadialAngle));
+            }
         }
     }
 }

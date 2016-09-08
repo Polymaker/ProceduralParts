@@ -54,8 +54,11 @@ namespace ProceduralParts.Geometry
                 Debug.Log("Failed to created adapter, sides does not have same number of vertices");
                 return new UncheckedMesh(0, 0);
             }
-            vertices.AddRange(GetSectionVertices(tAdapterSection, length / 2f));
-            vertices.AddRange(GetSectionVertices(bAdapterSection, -length / 2f));
+            var mAdapterSection = ProfileSection.Lerp(bAdapterSection, tAdapterSection, 0.5f);
+
+            vertices.AddRange(GetSectionVertices(tAdapterSection, length / 2f, length));
+            vertices.AddRange(GetSectionVertices(mAdapterSection, 0f, length));
+            vertices.AddRange(GetSectionVertices(bAdapterSection, -length / 2f, length));
 
             int vPerSide = tAdapterSection.PointCount;
 
@@ -68,22 +71,32 @@ namespace ProceduralParts.Geometry
                 triangles.Add(vPerSide + i);//bottom left
                 triangles.Add(i + 1);//top right
                 triangles.Add(i);//top left
+
+                triangles.Add(vPerSide * 2 + i);//bottom left
+                triangles.Add(vPerSide * 2 + i + 1);//bottom right
+                triangles.Add(vPerSide + i + 1);//top right
+
+                triangles.Add(vPerSide * 2 + i);//bottom left
+                triangles.Add(vPerSide + i + 1);//top right
+                triangles.Add(vPerSide + i);//top left
             }
 
             return CreateMesh(vertices, triangles);
         }
 
-        private static List<Vertex> GetSectionVertices(ProfileSection profile, float posY)
+        private static List<Vertex> GetSectionVertices(ProfileSection profile, float posY, float length)
         {
             var vertices = new List<Vertex>();
             ProfilePoint lastPoint = null;
             float uvPos = 0;
+            float uuY = (posY + length / 2f) / length;
             for (int i = 0; i < profile.PointCount; i++)
             {
                 var curPoint = profile.Points[i];
                 if (lastPoint != null)
                     uvPos += (curPoint.Position - lastPoint.Position).magnitude / profile.Perimeter;
-                vertices.Add(GetVertex(curPoint, posY, uvPos));
+
+                vertices.Add(GetVertex(curPoint, posY, new Vector2(uvPos, uuY)));
 
                 lastPoint = curPoint;
             }
@@ -239,12 +252,12 @@ namespace ProceduralParts.Geometry
             return new Vertex(vp, vn, GetTangentFromNormal(vn), new Vector2(uv, y > 0 ? 0 : 1)); 
         }
 
-        //private static Vertex GetVertex(ProfilePoint pp, float y, Vector2 uv)
-        //{
-        //    var vp = new Vector3(pp.Position.x, y, pp.Position.y);
-        //    var vn = new Vector3(pp.Normal.x, 0, pp.Normal.y);
-        //    return new Vertex(vp, vn, GetTangentFromNormal(vn), uv);
-        //}
+        private static Vertex GetVertex(ProfilePoint pp, float y, Vector2 uv)
+        {
+            var vp = new Vector3(pp.Position.x, y, pp.Position.y);
+            var vn = new Vector3(pp.Normal.x, 0, pp.Normal.y);
+            return new Vertex(vp, vn, GetTangentFromNormal(vn), uv);
+        }
 
         private static Vector4 GetTangentFromNormal(Vector3 normal, bool top = true)
         {

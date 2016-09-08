@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.25123.0
+# Visual Studio 2013
+VisualStudioVersion = 12.0.40629.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProceduralParts", "ProceduralParts.csproj", "{BB7C12FE-8189-4A56-B058-58C1B7366E60}"
 EndProject
@@ -51,7 +51,6 @@ Global
 		{760BCCD3-0FB9-46D4-8B69-402EFE187506}.Release|x86.ActiveCfg = Release|Any CPU
 		{760BCCD3-0FB9-46D4-8B69-402EFE187506}.Release|x86.Build.0 = Release|Any CPU
 		{760BCCD3-0FB9-46D4-8B69-402EFE187506}.Test KSP|Any CPU.ActiveCfg = Release|Any CPU
-		{760BCCD3-0FB9-46D4-8B69-402EFE187506}.Test KSP|Any CPU.Build.0 = Release|Any CPU
 		{760BCCD3-0FB9-46D4-8B69-402EFE187506}.Test KSP|Mixed Platforms.ActiveCfg = Release|Any CPU
 		{760BCCD3-0FB9-46D4-8B69-402EFE187506}.Test KSP|Mixed Platforms.Build.0 = Release|Any CPU
 		{760BCCD3-0FB9-46D4-8B69-402EFE187506}.Test KSP|x86.ActiveCfg = Release|Any CPU
