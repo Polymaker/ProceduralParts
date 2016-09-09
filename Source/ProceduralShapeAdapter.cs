@@ -98,8 +98,7 @@ namespace ProceduralParts
 
         protected override void UpdateShape(bool force)
         {
-            DebugMeshNormals(SidesMesh, Color.red);
-            DebugMeshTangents(SidesMesh, Color.blue);
+            
 
             if (!force && 
                 oldTopDiameter == topDiameter && 
@@ -135,6 +134,9 @@ namespace ProceduralParts
                 partMesh.ColliderMesh
                 );
 
+            DebugMeshNormals(SidesMesh, Color.red);
+            DebugMeshTangents(SidesMesh, Color.blue);
+
             oldTopDiameter = topDiameter;
             oldBottomDiameter = bottomDiameter;
             oldLength = length;
@@ -163,6 +165,7 @@ namespace ProceduralParts
             {
                 topDiameter = 1.5f;
             }
+            
         }
 
         public override void UpdateTechConstraints()
@@ -189,7 +192,7 @@ namespace ProceduralParts
             topDiameterEdit.maxValue = PPart.diameterMax;
             topDiameterEdit.minValue = PPart.diameterMin;
             topDiameter = Mathf.Clamp(topDiameter, topDiameterEdit.minValue, topDiameterEdit.maxValue);
-
+            
             UI_FloatEdit topSidesEdit = (UI_FloatEdit)Fields["topPolySides"].uiControlEditor;
             topSidesEdit.maxValue = 12f;
             topSidesEdit.minValue = 3f;

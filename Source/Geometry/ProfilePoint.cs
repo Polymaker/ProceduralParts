@@ -44,6 +44,8 @@ namespace ProceduralParts.Geometry
 
         public Vector2 TopUV { get; set; }
 
+        public float RadialUV { get; set; }
+
         public Angle RadialAngle
         {
             get
@@ -95,6 +97,7 @@ namespace ProceduralParts.Geometry
             Normal = normal;
             SideUV = 0f;
             angleIsDirty = true;
+            RadialUV = RadialAngle.Degrees / 360f;
         }
 
         public ProfilePoint(Vector2 position, Vector2 normal, float uV)
@@ -103,6 +106,7 @@ namespace ProceduralParts.Geometry
             Normal = normal;
             SideUV = uV;
             angleIsDirty = true;
+            RadialUV = RadialAngle.Degrees / 360f;
         }
 
         private Angle GetRadialAngle(bool includeNormal = false)
@@ -138,6 +142,10 @@ namespace ProceduralParts.Geometry
 
         public static ProfilePoint Interpolate(ProfilePoint p1, ProfilePoint p2, float t)
         {
+            if (t == 0)
+                return p1.Clone();
+            if (t == 1)
+                return p2.Clone();
             return new ProfilePoint(Vector2.Lerp(p1.Position, p2.Position, t), VectorUtils.SlerpNormal(p1.Normal, p2.Normal, t));
         }
     }

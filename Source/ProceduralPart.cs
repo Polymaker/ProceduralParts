@@ -1659,6 +1659,9 @@ namespace ProceduralParts
             }
             return moduleCost;
         }
+        
+        
+        
         #endregion
 
        
@@ -1747,6 +1750,6 @@ namespace ProceduralParts
                 }
             }
         }
-
+        
     }
 }

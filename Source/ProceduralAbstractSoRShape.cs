@@ -1324,22 +1324,39 @@ namespace ProceduralParts
         }
         #endregion
 
+        private List<GameObject> PreviousNormals;
+        private List<GameObject> PreviousTangents;
+
         public void DebugMeshNormals(Mesh mesh, Color color)
         {
+            if (PreviousNormals == null)
+                PreviousNormals = new List<GameObject>();
+            if (PreviousNormals.Count > 0)
+            {
+                PreviousNormals.ForEach(g => g.DestroyGameObject());
+            }
+
             if (mesh != null)
             {
                 for (int i = 0; i < mesh.vertexCount; i++)
                 {
+                    
                     var p1 = mesh.vertices[i];
                     var p2 = mesh.vertices[i] + mesh.normals[i] * 0.5f;
 
-                    DrawLine(p1, p2, color);
+                    PreviousNormals.Add(DrawLine(p1, p2, color, 0f));
                 }
             }
         }
 
         public void DebugMeshTangents(Mesh mesh, Color color)
         {
+            if (PreviousTangents == null)
+                PreviousTangents = new List<GameObject>();
+            if (PreviousTangents.Count > 0)
+            {
+                PreviousTangents.ForEach(g => g.DestroyGameObject());
+            }
             if (mesh != null)
             {
                 for (int i = 0; i < mesh.vertexCount; i++)
@@ -1347,7 +1364,7 @@ namespace ProceduralParts
                     var p1 = mesh.vertices[i];
                     var p2 = mesh.vertices[i] + ((Vector3)mesh.tangents[i]) * 0.5f;
 
-                    DrawLine(p1, p2, color);
+                    PreviousTangents.Add(DrawLine(p1, p2, color, 0f));
                 }
             }
         }

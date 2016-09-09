@@ -18,6 +18,19 @@ namespace ProceduralParts
             }
             return final;
         }
-        
+
+        public static void OrderListBy<TSource, TKey>(this List<TSource> list, Func<TSource, TKey> selector)
+        {
+            var orderedList = list.OrderBy(selector).ToList();
+            list.Clear();
+            list.AddRange(orderedList);
+        }
+
+        public static void Remove<T>(this List<T> list, IEnumerable<T> items)
+        {
+            var elements = items.ToArray();
+            for (int i = 0; i < elements.Length; i++)
+                list.Remove(elements[i]);
+        }
     }
 }

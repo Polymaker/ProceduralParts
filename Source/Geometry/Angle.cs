@@ -269,10 +269,12 @@ namespace ProceduralParts.Geometry
         public static float NormalizeDegrees(float degrees)
         {
             degrees = degrees % 360f;
-            if (Math.Abs(degrees) <= float.Epsilon)
-                return 0f;
+            
             if (degrees < 0f)
                 degrees += 360f;
+
+            if (degrees == 0f || degrees == 360f)
+                return 0f;
             return degrees;
         }
 

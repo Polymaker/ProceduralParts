@@ -126,30 +126,36 @@ namespace ProceduralParts.Geometry
             var orderedPoints = points.OrderBy(p => p.NormalizedRadial).ToList();
             if (!orderedPoints.First().Position.IsCloseTo(orderedPoints.Last().Position))
             {
-                var wrapPoint = ProfilePoint.Interpolate(orderedPoints.First(), orderedPoints.Last(), 0.5f);
-                orderedPoints.Insert(0, wrapPoint);
-                orderedPoints.Add(wrapPoint);
-                //int foundIdx = -1;
-                ////for (int i = 0; i < orderedPoints.Count; i++)
-                ////{
-                ////    var p1 = orderedPoints[i];
-                ////    var p2 = orderedPoints[(i + 1) % orderedPoints.Count];
-                ////    if (p1.Position.IsCloseTo(p2.Position))
-                ////    {
-                ////        foundIdx = i;
-                ////        break;
-                ////    }
-                ////}
-                //if (foundIdx < 0)
-                //    orderedPoints.Add(orderedPoints.First());
-                //else
-                //{
-                //    var endPoints = orderedPoints.Take(foundIdx + 1).ToArray();
-                //    orderedPoints.RemoveRange(0, foundIdx + 1);
-                //    orderedPoints.AddRange(endPoints);
-                //}
+                //var wrapPoint = ProfilePoint.Interpolate(orderedPoints.First(), orderedPoints.Last(), 0.5f);
+                //orderedPoints.Insert(0, wrapPoint);
+                //orderedPoints.Add(wrapPoint);
+                int foundIdx = -1;
+                for (int i = 0; i < orderedPoints.Count; i++)
+                {
+                    var p1 = orderedPoints[i];
+                    var p2 = orderedPoints[(i + 1) % orderedPoints.Count];
+                    if (p1.Position.IsCloseTo(p2.Position))
+                    {
+                        foundIdx = i;
+                        break;
+                    }
+                }
+                if (foundIdx < 0)
+                    orderedPoints.Add(orderedPoints.First());
+                else
+                {
+                    var endPoints = orderedPoints.Take(foundIdx + 1).ToArray();
+                    orderedPoints.RemoveRange(0, foundIdx + 1);
+                    orderedPoints.AddRange(endPoints);
+                }
             }
-
+            for (int i = orderedPoints.Count - 2; i > 0; i--)
+            {
+                var p1 = orderedPoints[i];
+                var p2 = orderedPoints[i - 1];
+                if (p2.Position == p1.Position && p1.Normal == p2.Normal)
+                    orderedPoints.Remove(p1);
+            }
             return orderedPoints.ToArray();
         }
 
@@ -169,6 +175,40 @@ namespace ProceduralParts.Geometry
             return result;
         }
 
+        public ProfilePoint InterpolateUV(float uv)
+        {
+            for (int i = 0; i < PointCount; i++)
+            {
+
+                var curUV = Points[i].RadialUV;
+                var nextUV = Points[i].Next.RadialUV;
+
+                if (nextUV < curUV)
+                {
+                    if (uv < nextUV)
+                        curUV = curUV - 1f;
+                    else
+                        nextUV += 1f;
+                    //nextUV = (1f - curUV) + nextUV;
+
+                }
+
+                if (uv >= curUV && uv <= nextUV)
+                {
+                    var delta = (uv - curUV) / (nextUV - curUV);
+                    return ProfilePoint.Interpolate(Points[i], Points[i].Next, delta);
+                }
+                //else if (uv >= Points[i].RadialUV && flag)
+                //{
+                //    curUV = Points[i].RadialUV;
+                //    //nextUV = 
+                //    var delta = (uv - curUV) / (nextUV - curUV);
+                //    return ProfilePoint.Interpolate(Points[i], Points[i].Next, delta);
+                //}
+            }
+            return null;
+        }
+
         private static ProfilePoint InterpolatePoint(ProfileEdge edge, Angle targetAngle, float delta, int iteration)
         {
             var ip = ProfilePoint.Interpolate(edge.P1, edge.P2, delta);
@@ -181,81 +221,104 @@ namespace ProceduralParts.Geometry
             return InterpolatePoint(edge, targetAngle, delta ,++iteration);
         }
 
-        #region Section Combining
-        
-        public static ProfileSection CreateAdapter(ProfileSection section1, ProfileSection section2)
+        private static bool AreSimilar(ProfileSection section1, ProfileSection section2)
         {
             if (section1 == section2)
-                return section1;
-
+                return true;
             if (section1.PointCount == section2.PointCount)
             {
-                bool similar = true;
-                for (int i = 0; i < section1.PointCount; i+=4)
+                for (int i = 0; i < section1.PointCount; i += 4)
                 {
-                    if (section1.Points[i].RadialAngle.Distance(section2.Points[i].RadialAngle) > 1)
-                    {
-                        similar = false;
-                        break;
-                    }
+                    if (Mathf.Abs(section1.Points[i].SideUV - section2.Points[i].SideUV) > 0.01f)
+                        return false;
+                    //if (section1.Points[i].RadialAngle.Distance(section2.Points[i].RadialAngle) > 1)
+                    //    return false;
                 }
-                if (similar)
-                    return section1;
+                return true;
             }
+            return false;
+        }
+
+        #region Section Combining
+
+        public static ProfileSection CreateAdapter(ProfileSection section1, ProfileSection section2)
+        {
+            if (AreSimilar(section1, section2))
+                return section1;
 
             var finalPoints = new List<ProfilePoint>();
 
             var combinedPoints = new List<ProfilePoint>();
             combinedPoints.AddRange(section1.Points);
             combinedPoints.AddRange(section2.Points);
-            combinedPoints = combinedPoints.OrderBy(cp => cp.NormalizedRadial).ToList();
+            combinedPoints = combinedPoints.OrderBy(cp => cp.RadialUV).ThenBy(cp => cp.NormalizedRadial).ToList();
 
-            var radialAngles = combinedPoints.Select(cp => cp.RadialAngle).ToList();
 
-            radialAngles.Add(Angle.Zero);
-            radialAngles = radialAngles.OrderBy(a => a).ToList();
-            radialAngles = radialAngles.RemoveDoubles((x, y) => Angle.DeltaAngle(x, y).Degrees < 0.5f).ToList();
+            const float errorDist = 0.0001f;
+            var uvList = new List<float>();
+            //uvList.AddRange(new float[] { 0f, 0.125f, 0.25f, 0.375f, 0.5f, 0.625f, 0.75f, 0.875f });
+            uvList.AddRange(section1.Points.Select(p => p.RadialUV));
+            uvList.AddRange(section2.Points.Select(p => p.RadialUV));
+            uvList.OrderListBy(uv => uv);
+            uvList = uvList.Distinct().ToList();
+            uvList = uvList.RemoveDoubles((x, y) => Mathf.Abs(x - y) < errorDist).ToList();
 
-            for (int i = 0; i < radialAngles.Count; i++)
+            if (uvList.Count > 100)
             {
-                var currentAngle = radialAngles[i];
-                var pointsAtAngle = combinedPoints.Where(cp => Mathf.Abs(cp.RadialAngle.Distance(currentAngle).Degrees) < 1f).ToList();
-                var section1HardVert = pointsAtAngle.Where(cp => cp.Section == section1).Count() >= 2;
-                var section2HardVert = pointsAtAngle.Where(cp => cp.Section == section2).Count() >= 2;
-                //by 'hard vertices' I mean vertices at the same position but have different normals
+                uvList = uvList.RemoveDoubles((x, y) => Mathf.Abs(x - y) < 0.001f).ToList();
+            }
 
-                if (section1HardVert)
+            //float smallestGap = 1f;
+            
+            //for (int i = 0; i < uvList.Count - 1; i++)
+            //{
+            //    var gap = uvList[i + 1] - uvList[i];
+            //    if (gap != 0f && gap > errorDist && gap < smallestGap)
+            //        smallestGap = gap;
+            //}
+            
+            for (int i = 0; i < uvList.Count; i++)
+            {
+                var currentUV = uvList[i];
+                
+                var sec1Points = combinedPoints.Where(p => p.Section == section1 && Mathf.Abs(p.RadialUV - currentUV) <= errorDist).ToList();
+                var sec2Points = combinedPoints.Where(p => p.Section == section2 && Mathf.Abs(p.RadialUV - currentUV) <= errorDist).ToList();
+                combinedPoints.Remove(sec1Points);
+                combinedPoints.Remove(sec2Points);
+
+                if (sec1Points.Count >= 2)
                 {
-                    var section1Pts = pointsAtAngle.Where(cp => cp.Section == section1);
-                    var pt1 = section1Pts.First().Clone();
-                    var pt2 = section1Pts.First().Clone();
-                    finalPoints.Add(pt1);
-                    finalPoints.Add(pt2);
-                    //if (pt1.Position.IsCloseTo(pt2.Position) && pt1.Normal == pt2.Normal)
-                    //    finalPoints.Add(section1.GetPointAtAngle(currentAngle));
-                    //else
-                    //{
-                    //    finalPoints.Add(pt1);
-                    //    finalPoints.Add(pt2);
-                    //}
+                    var pt1 = sec1Points.First().Clone();
+                    var pt2 = sec1Points.Last().Clone();
+                    if (!(pt1.Position == pt2.Position && pt1.Normal == pt2.Normal))
+                    {
+                        finalPoints.Add(pt1);
+                        finalPoints.Add(pt2);
+                        continue;
+                    }
+
                 }
-                else if (section2HardVert && !section1HardVert)
+                else if (sec2Points.Count >= 2)
                 {
-                    var section2Pts = pointsAtAngle.Where(cp => cp.Section == section2);
-                    var pt1 = section2Pts.First().Clone();
-                    var pt2 = section2Pts.First().Clone();
-                    //if (pt1.Position.IsCloseTo(pt2.Position) && pt1.Normal == pt2.Normal)
-                    //    finalPoints.Add(section1.GetPointAtAngle(currentAngle));
-                    //else
-                    //{
-                    //    finalPoints.Add(section1.GetPointAtAngle(pt1.RadialAngle));
-                    //    finalPoints.Add(section1.GetPointAtAngle(pt2.RadialAngle));
-                    //}
-                    finalPoints.Add(section1.GetPointAtAngle(pt1.RadialAngle));
-                    finalPoints.Add(section1.GetPointAtAngle(pt2.RadialAngle));
+                    var pt1 = sec2Points.First().Clone();
+                    var pt2 = sec2Points.Last().Clone();
+                    if (!(pt1.Position == pt2.Position && pt1.Normal == pt2.Normal))
+                    {
+                        finalPoints.Add(section1.InterpolateUV(currentUV - errorDist));
+                        finalPoints.Add(section1.InterpolateUV(currentUV + errorDist));
+                        continue;
+                    }
                 }
-                else
-                    finalPoints.Add(section1.GetPointAtAngle(currentAngle));
+                else if (sec1Points.Count == 0 && sec2Points.Count == 0)
+                {
+                    continue;
+                }
+                //else if (sec1Points.Count == 0 && sec2Points.Count == 0)
+                //{
+                //    finalPoints.Add(sec1Points.First().Clone());
+                //    break;
+                //}
+                finalPoints.Add(section1.InterpolateUV(currentUV));
             }
 
             finalPoints.Add(finalPoints[0].Clone());
@@ -347,7 +410,7 @@ namespace ProceduralParts.Geometry
             new ProfilePoint(0.000f, -0.750f, 0f, -1f));
 
         public static ProfileSection Mk3Profile = CreateSorted(
-            new ProfilePoint(0.000f, -1.875f, 0.131f, -0.991f),
+            new ProfilePoint(0.000f, -1.875f, 0f, -1f),
             new ProfilePoint(0.485f, -1.811f, 0.259f, -0.966f),
             new ProfilePoint(0.938f, -1.624f, 0.500f, -0.866f),
             new ProfilePoint(1.326f, -1.326f, 0.609f, -0.793f),
@@ -362,8 +425,7 @@ namespace ProceduralParts.Geometry
             new ProfilePoint(1.326f, 1.326f, 0.609f, 0.793f),
             new ProfilePoint(0.938f, 1.624f, 0.500f, 0.866f),
             new ProfilePoint(0.485f, 1.811f, 0.259f, 0.966f),
-            new ProfilePoint(0.000f, 1.875f, 0.131f, 0.991f),
-            new ProfilePoint(0.000f, 1.875f, -0.131f, 0.991f),
+            new ProfilePoint(0.000f, 1.875f, 0f, 1f),
             new ProfilePoint(-0.485f, 1.811f, -0.259f, 0.966f),
             new ProfilePoint(-0.938f, 1.624f, -0.500f, 0.866f),
             new ProfilePoint(-1.326f, 1.326f, -0.609f, 0.793f),
@@ -378,7 +440,7 @@ namespace ProceduralParts.Geometry
             new ProfilePoint(-1.326f, -1.326f, -0.609f, -0.793f),
             new ProfilePoint(-0.938f, -1.624f, -0.500f, -0.866f),
             new ProfilePoint(-0.485f, -1.811f, -0.259f, -0.966f),
-            new ProfilePoint(0.000f, -1.875f, -0.131f, -0.991f));
+            new ProfilePoint(0.000f, -1.875f, 0f, -1f));
 
         #endregion
 

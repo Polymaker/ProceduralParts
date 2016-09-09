@@ -110,6 +110,7 @@ namespace ProceduralParts
 			data.Set<string> ("volName", volName);
 			data.Set<double> ("newTotalVolume", newVolume);
 			part.SendEvent ("OnPartVolumeChanged", data, 0);
+            
 		}
 
         //[PartMessageEvent]
@@ -305,7 +306,7 @@ namespace ProceduralParts
 
         private static Material LineMaterial;
 
-        protected void DrawLine(Vector3 start, Vector3 end, Color color, float duration = 0.2f)
+        protected GameObject DrawLine(Vector3 start, Vector3 end, Color color, float duration = 0.2f)
         {
             GameObject myLine = new GameObject();
             myLine.transform.parent = transform;
@@ -323,7 +324,9 @@ namespace ProceduralParts
             lr.SetVertexCount(2);
             lr.SetPosition(0, start);
             lr.SetPosition(1, end);
-            GameObject.Destroy(myLine, duration);
+            if (duration > 0)
+                GameObject.Destroy(myLine, duration);
+            return myLine;
         }
     }
 }
