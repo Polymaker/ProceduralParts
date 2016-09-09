@@ -98,6 +98,9 @@ namespace ProceduralParts
 
         protected override void UpdateShape(bool force)
         {
+            DebugMeshNormals(SidesMesh, Color.red);
+            DebugMeshTangents(SidesMesh, Color.blue);
+
             if (!force && 
                 oldTopDiameter == topDiameter && 
                 oldBottomDiameter == bottomDiameter &&

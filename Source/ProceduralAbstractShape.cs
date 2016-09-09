@@ -302,5 +302,28 @@ namespace ProceduralParts
         }
 
         public abstract void UpdateTechConstraints();
+
+        private static Material LineMaterial;
+
+        protected void DrawLine(Vector3 start, Vector3 end, Color color, float duration = 0.2f)
+        {
+            GameObject myLine = new GameObject();
+            myLine.transform.parent = transform;
+            //myLine.layer = 30;
+            LineRenderer lr = myLine.AddComponent<LineRenderer>();
+            lr.useWorldSpace = false;
+            lr.transform.localPosition = Vector3.zero;
+            lr.transform.localEulerAngles = Vector3.zero; 
+
+            if(LineMaterial == null)
+                LineMaterial = new Material(Shader.Find("Particles/Additive"));
+            lr.material = LineMaterial;
+            lr.SetColors(color, color);
+            lr.SetWidth(0.01f, 0.01f);
+            lr.SetVertexCount(2);
+            lr.SetPosition(0, start);
+            lr.SetPosition(1, end);
+            GameObject.Destroy(myLine, duration);
+        }
     }
 }

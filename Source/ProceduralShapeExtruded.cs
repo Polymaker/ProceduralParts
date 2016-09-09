@@ -57,6 +57,8 @@ namespace ProceduralParts
 
         protected override void UpdateShape(bool force)
         {
+            //DebugMeshNormals(SidesMesh, Color.green);
+
             if (!force &&
                 oldDiameter == diameter &&
                 oldLength == length &&
@@ -174,6 +176,7 @@ namespace ProceduralParts
             polySides = Mathf.Clamp(polySides, topSidesEdit.minValue, topSidesEdit.maxValue);
             
         }
+
 
         public override void UpdateTFInterops()
         {

@@ -226,6 +226,32 @@ namespace ProceduralParts.Geometry
             return a3 >= a1 && a3 <= a2;
         }
 
+        public bool IsBetween(Angle a1, Angle a2, bool exclusive)
+        {
+            if (!exclusive)
+                return this.IsBetween(a1, a2);
+            a1.Normalize();
+            a2.Normalize();
+
+            var a3 = Normalized();
+            if (a1 == a2)
+                return a1 == a3;
+
+            var delta = (a2 - a1).Normalized();
+
+            if (delta.Degrees > 355f)
+                return false;
+
+            if (a1.Degrees + delta.Degrees > 360f || a2.Degrees - delta.Degrees < 0)
+            {
+                var start1 = a1; var end1 = a1 + delta;
+                var start2 = a2 - delta; var end2 = a2;
+                return (a3 > start1 && a3 < end1) || (a3 > start2 && a3 < end2);
+            }
+
+            return a3 > a1 && a3 < a2;
+        }
+
         #region Convertion
 
         public static float ToDegrees(float radians)

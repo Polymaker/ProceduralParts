@@ -21,8 +21,8 @@ namespace ProceduralParts.Geometry
             get { return _Position; }
             set
             {
-                if (_Position == value)
-                    return;
+                //if (_Position == value)
+                //    return;
                 _Position = value;
                 angleIsDirty = true;
             }
@@ -33,8 +33,8 @@ namespace ProceduralParts.Geometry
             get { return _Normal; }
             set
             {
-                if (_Normal == value)
-                    return;
+                //if (_Normal == value)
+                //    return;
                 _Normal = value;
                 angleIsDirty = true;
             }
@@ -129,6 +129,11 @@ namespace ProceduralParts.Geometry
         public ProfilePoint Clone()
         {
             return new ProfilePoint(Position, Normal) { _RadialAngle = RadialAngle, angleIsDirty = false };
+        }
+
+        public static ProfilePoint Interpolate1(ProfilePoint p1, ProfilePoint p2, float t)
+        {
+            return new ProfilePoint(Vector2.Lerp(p1.Position, p2.Position, t), Vector2.Lerp(p1.Normal, p2.Normal, t));
         }
 
         public static ProfilePoint Interpolate(ProfilePoint p1, ProfilePoint p2, float t)

@@ -169,10 +169,10 @@ namespace ProceduralParts.Geometry
             var triangles = new List<int>();
 
             var topVertices = shape.Top.Points.Select(p => p.GetCapVertex())
-                .RemoveDoubles((v1, v2) => v1.Pos.CloseTo(v2.Pos)).ToList();
+                .RemoveDoubles((v1, v2) => v1.Pos.IsCloseTo(v2.Pos)).ToList();
 
             var bottomVertices = shape.Bottom.Points.Select(p => p.GetCapVertex())
-                .RemoveDoubles((v1, v2) => v1.Pos.CloseTo(v2.Pos)).ToList();
+                .RemoveDoubles((v1, v2) => v1.Pos.IsCloseTo(v2.Pos)).ToList();
 
             var topCenter = new Vertex(Vector3.up * shape.Top.PosY, Vector3.up, new Vector4(-1, 0, 0, 1), new Vector2(0.5f, 0.5f));
             var botCenter = new Vertex(Vector3.up * shape.Bottom.PosY, Vector3.down, new Vector4(-1, 0, 0, -1), new Vector2(0.5f, 0.5f));
@@ -215,19 +215,19 @@ namespace ProceduralParts.Geometry
             //NOTE: Unity use a clockwise triangle winding
 
             //method #1 |/|
-            if (!tl.Value.Pos.CloseTo(tr.Value.Pos))
-            {
+            //if (!tl.Value.Pos.CloseTo(tr.Value.Pos))
+            //{
                 triangles.Add(tl.vIndex);
                 triangles.Add(tr.vIndex);
                 triangles.Add(bl.vIndex);
-            }
+            //}
 
-            if (!bl.Value.Pos.CloseTo(br.Value.Pos))
-            {
+            //if (!bl.Value.Pos.CloseTo(br.Value.Pos))
+            //{
                 triangles.Add(bl.vIndex);
                 triangles.Add(tr.vIndex);
                 triangles.Add(br.vIndex);
-            }
+            //}
 
             ////method #2 |\|
             //triangles.Add(tl.vIndex);
@@ -346,7 +346,7 @@ namespace ProceduralParts.Geometry
                 {
                     if (Mesh == null || Index < 0)
                         return 0f;
-                    return 1f - (Index / (float)(Mesh.SubDivCount - 1));
+                    return /*1f - */(Index / (float)(Mesh.SubDivCount - 1));
                 }
             }
 
@@ -461,7 +461,11 @@ namespace ProceduralParts.Geometry
             {
                 var vp = new Vector3(Point.Position.x, Section.PosY, Point.Position.y);
                 var vn = new Vector3(Point.Normal.x, 0, Point.Normal.y);
-                var tan = new Vector4(Point.Normal.y, 0, Point.Normal.x, -1f);
+                
+
+                var np = Next.Point.Position.IsCloseTo(Point.Position) ? Next.Next : Next;
+                var tanN = (np.Point.Position - Point.Position).normalized;
+                var tan = new Vector4(tanN.x, 0, tanN.y, -1f);
                 _Value = new Vertex(vp, vn, tan, new Vector2(Point.SideUV, Section.UV));
             }
 

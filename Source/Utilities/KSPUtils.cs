@@ -60,7 +60,11 @@ namespace KSPAPIExtensions
         public static void ReorderField(this PartModule module, BaseField field, int newIndex)
         {
             if (field == null)
+            {
+                Debug.Log("Field not found!");
                 return;
+            }
+
             try
             {
                 var fieldList = GetFieldList(module);
@@ -71,11 +75,12 @@ namespace KSPAPIExtensions
                 else
                     fieldList.Insert(newIndex, field);
             }
-            catch
+            catch (Exception ex)
             {
+                Debug.LogException(ex);
                 return;
             }
-            Debug.Log("Reordered field " + field.name + " to index " + newIndex + "!!");
+            Debug.Log(String.Format("Reordered field {0} to index {1}!!", field.name, newIndex));
         }
 
         private static List<BaseField> GetFieldList(PartModule module)
@@ -377,6 +382,7 @@ namespace KSPAPIExtensions
 			return startup.GetHashCode() ^ once.GetHashCode() ^ type.GetHashCode();
 			// ReSharper restore NonReadonlyFieldInGetHashCode
 		}
-	} 
+	}
+
 }
 

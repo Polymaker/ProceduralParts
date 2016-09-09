@@ -19,12 +19,12 @@ namespace ProceduralParts
             return new Vector4(v.x, v.y, v.z, w);
         }
 
-        public static bool CloseTo(this Vector3 v1, Vector3 v2)
+        public static bool IsCloseTo(this Vector3 v1, Vector3 v2)
         {
             return (v2 - v1).magnitude < float.Epsilon;
         }
 
-        public static bool CloseTo(this Vector2 v1, Vector2 v2)
+        public static bool IsCloseTo(this Vector2 v1, Vector2 v2)
         {
             return (v2 - v1).magnitude < float.Epsilon;
         }
@@ -35,7 +35,10 @@ namespace ProceduralParts
                 return n1;
             float omega = Mathf.Acos(Vector2.Dot(n1, n2));
             float sinOmega = Mathf.Sin(omega);
-            return Mathf.Sin(omega * (1f - t)) / sinOmega * n1 + Mathf.Sin(omega * t) / sinOmega * n2;
+            var norm = Mathf.Sin(omega * (1f - t)) / sinOmega * n1 + Mathf.Sin(omega * t) / sinOmega * n2;
+            if (float.IsNaN(norm.x) || float.IsNaN(norm.y))
+                return n1;
+            return norm;
         }
     }
 }
