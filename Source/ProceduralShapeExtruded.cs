@@ -10,6 +10,7 @@ namespace ProceduralParts
 {
     public class ProceduralShapeExtruded : ProceduralAbstractSoRShape
     {
+
         #region Properties (fields)
 
         private string[] ShapeNames = new string[] { "Polygon", "Mk2", "Mk3" };

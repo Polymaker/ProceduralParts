@@ -134,8 +134,8 @@ namespace ProceduralParts
                 partMesh.ColliderMesh
                 );
 
-            DebugMeshNormals(SidesMesh, Color.red);
-            DebugMeshTangents(SidesMesh, Color.blue);
+            //DebugMeshNormals(SidesMesh, Color.red);
+            //DebugMeshTangents(SidesMesh, Color.blue);
 
             oldTopDiameter = topDiameter;
             oldBottomDiameter = bottomDiameter;

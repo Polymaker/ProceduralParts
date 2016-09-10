@@ -8,16 +8,27 @@ namespace ProceduralParts.Geometry
 {
     public class ProfileSection
     {
-        // Fields...
+
+        #region Fields
+
         private float _SurfaceArea;
         private float _Perimeter;
         private float _Height;
         private float _Width;
-        private readonly ProfilePoint[] _Points;
+        private ProfilePoint[] _Points;
+
+        #endregion
+
+        #region Properties
 
         public ProfilePoint[] Points
         {
             get { return _Points; }
+        }
+
+        public int PointCount 
+        {
+            get { return _Points.Length; } 
         }
 
         public float Width
@@ -39,8 +50,10 @@ namespace ProceduralParts.Geometry
         {
             get { return _SurfaceArea; }
         }
-        
-        public int PointCount { get { return _Points.Length; } }
+
+        #endregion
+
+        #region Ctors
 
         public ProfileSection(params ProfilePoint[] points)
         {
@@ -48,8 +61,8 @@ namespace ProceduralParts.Geometry
                 throw new Exception("Cannot create section with no points");
             _Points = points;
 
-            CalculateSize();
-            
+            CalculateBounds();
+
             InitializePoints();
 
             CalculateTopUVs();
@@ -60,38 +73,42 @@ namespace ProceduralParts.Geometry
         public ProfileSection(IEnumerable<ProfilePoint> points)
             : this(points.ToArray()) { }
 
-        private void CalculateSize()
-        {
-            var xMin = _Points.Min(p => p.Position.x);
-            var xMax = _Points.Max(p => p.Position.x);
-            var yMin = _Points.Min(p => p.Position.y);
-            var yMax = _Points.Max(p => p.Position.y);
+        #endregion
 
-            _Width = Mathf.Abs(xMax - xMin);
-            _Height = Mathf.Abs(yMax - yMin);
+        #region Initializations & calculations
+
+        private void CalculateBounds()
+        {
+            var max = _Points.Select(p=>p.Position).Aggregate((x, y) => Vector2.Max(x, y));
+            var min = _Points.Select(p => p.Position).Aggregate((x, y) => Vector2.Min(x, y));
+            _Width = Mathf.Abs(max.x - min.x);
+            _Height = Mathf.Abs(max.y - min.y);
         }
 
         private void InitializePoints()
         {
-            bool calculateUV = _Points.All(pp => pp.SideUV == 0);
+            //ensure that we have a point at 0° to preserve texture alignment
+            //if (!_Points.Any(p => Mathf.Approximately(p.RadialUV, 0f)))
+            //{
+            //    var pointList = _Points.ToList();
+            //    pointList.Add(InterpolateByUV(0f));
+            //    _Points = OrderProfilePoints(pointList);
+            //}
+
             for (int i = 0; i < _Points.Length; i++)
             {
+                _Points[i].Init(this, i);
                 var curPoint = _Points[i];
-                curPoint.ListIndex = i;
-                curPoint.Section = this;
-                if (calculateUV)
-                    curPoint.SideUV = _Perimeter;
+                curPoint.SideUV = _Perimeter;
                 _Perimeter += (curPoint.Next.Position - curPoint.Position).magnitude;
                 _SurfaceArea += GetSurfaceArea(curPoint);
             }
 
-            if (calculateUV)
-            {
-                for (int i = 0; i < _Points.Length; i++)
-                    _Points[i].SideUV = Mathf.Clamp(_Points[i].SideUV / _Perimeter, 0f, 1f);
-                _Points[0].SideUV = 0f;
-                _Points[PointCount - 1].SideUV = 1f;
-            }
+            for (int i = 0; i < _Points.Length; i++)
+                _Points[i].SideUV = Mathf.Clamp(_Points[i].SideUV / _Perimeter, 0f, 1f);
+
+            _Points[0].SideUV = 0f;
+            _Points[PointCount - 1].SideUV = 1f;
         }
 
         private void CalculateTopUVs()
@@ -104,12 +121,12 @@ namespace ProceduralParts.Geometry
             {
                 var curPoint = _Points[i];
                 curPoint.TopUV = new Vector2(
-                    (curPoint.Position.x + centerOffset.x + uvOffset.x) / maxSize, 
+                    (curPoint.Position.x + centerOffset.x + uvOffset.x) / maxSize,
                     (curPoint.Position.y + centerOffset.y + uvOffset.y) / maxSize);
             }
         }
 
-        private float GetSurfaceArea(ProfilePoint point)
+        private static float GetSurfaceArea(ProfilePoint point)
         {
             var a = point.Position.magnitude;
             var b = point.Next.Position.magnitude;
@@ -133,6 +150,10 @@ namespace ProceduralParts.Geometry
             }
         }
 
+        #endregion
+
+        
+
         public static ProfileSection CreateSorted(params ProfilePoint[] points)
         {
             return new ProfileSection(OrderProfilePoints(points));
@@ -140,7 +161,7 @@ namespace ProceduralParts.Geometry
 
         internal static ProfilePoint[] OrderProfilePoints(IEnumerable<ProfilePoint> points)
         {
-            var orderedPoints = points.OrderBy(p => p.NormalizedRadial).ToList();
+            var orderedPoints = points.OrderBy(p => p.NormRadialUV).ToList();
             if (!orderedPoints.First().Position.IsCloseTo(orderedPoints.Last().Position))
             {
                 //var wrapPoint = ProfilePoint.Interpolate(orderedPoints.First(), orderedPoints.Last(), 0.5f);
@@ -176,29 +197,21 @@ namespace ProceduralParts.Geometry
             return orderedPoints.ToArray();
         }
 
-        public ProfilePoint GetPointAtAngle(Angle angle)
-        {
-            var edge = GetEdge(angle);
-            var dist = edge.P1.RadialAngle.Distance(angle);
-            if (Math.Abs(dist.Degrees) < float.Epsilon)
-            {
-                if (edge.P1.Normal == edge.P2.Normal)
-                    return edge.P1.Clone();
-                return ProfilePoint.Interpolate(edge.P1, edge.P2, 0.5f);
-            }
-            var delta = dist.Degrees / edge.ArcDelta.Degrees;
-            var result = InterpolatePoint(edge, angle, delta, 0);
-            
-            return result;
-        }
 
-        public ProfilePoint InterpolateUV(float uv)
+        public ProfilePoint InterpolateByUV(float uv)
         {
             for (int i = 0; i < PointCount; i++)
             {
+                var pt1 = Points[i];
+                var pt2 = pt1.Next ?? Points[(i+1) % PointCount];
 
-                var curUV = Points[i].RadialUV;
-                var nextUV = Points[i].Next.RadialUV;
+                var curUV = pt1.RadialUV;
+                var nextUV = pt2.RadialUV;
+
+                if (Mathf.Approximately(curUV, nextUV) && Mathf.Approximately(curUV, uv))
+                {
+                    return ProfilePoint.Slerp(pt1, pt2, 0.5f);
+                }
 
                 if (nextUV < curUV)
                 {
@@ -213,22 +226,10 @@ namespace ProceduralParts.Geometry
                     var delta = (uv - curUV) / (nextUV - curUV);
                     if (float.IsNaN(delta))
                         delta = 0.5f;
-                    return ProfilePoint.Interpolate(Points[i], Points[i].Next, delta);
+                    return ProfilePoint.Slerp(pt1, pt2, delta);
                 }
             }
             return null;
-        }
-
-        private static ProfilePoint InterpolatePoint(ProfileEdge edge, Angle targetAngle, float delta, int iteration)
-        {
-            var ip = ProfilePoint.Interpolate(edge.P1, edge.P2, delta);
-            var angleDist = ip.RadialAngle.Distance(targetAngle);
-            if (Mathf.Abs(angleDist.Degrees) <= 0.001f/* || iteration > 3*/)
-                return ip;
-            if (iteration > 4)
-                return ip;
-            delta += angleDist.Degrees / edge.ArcDelta.Degrees;
-            return InterpolatePoint(edge, targetAngle, delta ,++iteration);
         }
 
         private static bool AreSimilar(ProfileSection section1, ProfileSection section2)
@@ -259,7 +260,7 @@ namespace ProceduralParts.Geometry
             var combinedPoints = new List<ProfilePoint>();
             combinedPoints.AddRange(section1.Points);
             combinedPoints.AddRange(section2.Points);
-            combinedPoints = combinedPoints.OrderBy(cp => cp.RadialUV).ThenBy(cp => cp.NormalizedRadial).ToList();
+            combinedPoints = combinedPoints.OrderBy(cp => cp.RadialUV).ThenBy(cp => cp.NormRadialUV).ToList();
 
 
             const float errorDist = 0.0001f;
@@ -271,7 +272,6 @@ namespace ProceduralParts.Geometry
             uvList.AddRange(section2.Points.Select(p => p.RadialUV));
             uvList.OrderListBy(uv => uv);
             uvList = uvList.Distinct().ToList();
-            //uvList = uvList.RemoveDoubles((x, y) => Mathf.Abs(x - y) < errorDist).ToList();
 
             if (uvList.Count > 100)
             {
@@ -306,13 +306,13 @@ namespace ProceduralParts.Geometry
                     var pt2 = sec2Points.Last().Clone();
                     if (!(pt1.Position == pt2.Position && pt1.Normal == pt2.Normal))
                     {
-                        finalPoints.Add(section1.InterpolateUV(currentUV - errorDist));
-                        finalPoints.Add(section1.InterpolateUV(currentUV + errorDist));
+                        finalPoints.Add(section1.InterpolateByUV(currentUV - errorDist));
+                        finalPoints.Add(section1.InterpolateByUV(currentUV + errorDist));
                         continue;
                     }
                 }
 
-                finalPoints.Add(section1.InterpolateUV(currentUV));
+                finalPoints.Add(section1.InterpolateByUV(currentUV));
             }
 
             finalPoints.Add(finalPoints[0].Clone());
@@ -327,51 +327,9 @@ namespace ProceduralParts.Geometry
 
             for (int i = 0; i < section1.PointCount; i++)
             {
-                finalPoints.Add(ProfilePoint.Interpolate(section1.Points[i], section2.Points[i], t));
+                finalPoints.Add(ProfilePoint.Slerp(section1.Points[i], section2.Points[i], t));
             }
             return new ProfileSection(finalPoints);
-        }
-
-        private class ProfileEdge
-        {
-            public ProfilePoint P1 { get; set; }
-            public ProfilePoint P2 { get; set; }
-
-            public Angle ArcDelta
-            {
-                get
-                {
-                    return Angle.DeltaAngle(P1.RadialAngle, P2.RadialAngle);
-                }
-            }
-
-            public ProfileEdge(ProfilePoint p1, ProfilePoint p2)
-            {
-                P1 = p1;
-                P2 = p2;
-            }
-        }
-
-        private ProfileEdge GetEdge(Angle angle)
-        {
-            //var edgesFound = new List<ProfileEdge>();
-            foreach (var pp in Points)
-            {
-                if (angle.IsBetween(pp.RadialAngle, pp.Next.RadialAngle, true))
-                    return new ProfileEdge(pp, pp.Next);
-                    //edgesFound.Add(new ProfileEdge(pp, pp.Next));
-            }
-            foreach (var pp in Points)
-            {
-                if (angle.IsBetween(pp.RadialAngle, pp.Next.RadialAngle))
-                    return new ProfileEdge(pp, pp.Next);
-                //edgesFound.Add(new ProfileEdge(pp, pp.Next));
-            }
-            return null;
-            //if (edgesFound.Count == 1)
-            //    return edgesFound[0];
-
-            //return edgesFound.OrderByDescending(e=>angle.IsBetween(e.P1.NormalizedRadial,e.P2.NormalizedRadial)).First();
         }
 
         #endregion
@@ -462,8 +420,8 @@ namespace ProceduralParts.Geometry
             {
                 var curAngle = theta * s;
                 var norm = ProfilePoint.GetPoint(curAngle, 1f);
-                points.Add(new ProfilePoint(ProfilePoint.GetPoint(curAngle - halfT, radius), norm, s / (float)sideCount));
-                points.Add(new ProfilePoint(ProfilePoint.GetPoint(curAngle + halfT, radius), norm, (s + 1) / (float)sideCount));
+                points.Add(new ProfilePoint(ProfilePoint.GetPoint(curAngle - halfT, radius), norm));
+                points.Add(new ProfilePoint(ProfilePoint.GetPoint(curAngle + halfT, radius), norm));
             }
 
             return new ProfileSection(points.ToArray());

@@ -158,6 +158,7 @@ namespace ProceduralParts
         [KSPField]
         public string thrustVectorTransformName;
         private Transform thrustTransform;
+        private Transform bellTransform;
 
         private EngineWrapper _engineWrapper;
         private EngineWrapper Engine
@@ -276,8 +277,11 @@ namespace ProceduralParts
                     break;
             }
 
-            Transform srbBell = part.FindModelTransform(srbBellName);
-            thrustTransform = srbBell.Find(thrustVectorTransformName);
+            bellTransform = part.FindModelTransform(srbBellName);
+            thrustTransform = bellTransform.Find(thrustVectorTransformName);
+            //startDirection = thrustTransform.localEulerAngles.z;
+            startDirection = bellTransform.localEulerAngles.z;
+            
 
             foreach (SRBBellConfig conf in srbConfigs.Values)
             {
@@ -288,7 +292,7 @@ namespace ProceduralParts
                     srbConfigs.Remove(conf.modelName);
                     continue;
                 }
-                conf.model.transform.parent = srbBell;
+                conf.model.transform.parent = bellTransform;
 
                 conf.srbAttach = conf.model.Find(conf.srbAttachName);
                 if (conf.srbAttach == null)
@@ -373,8 +377,13 @@ namespace ProceduralParts
             {
                 // Attach the bell. In the config file this isn't in normalized position, move it into normalized position first.
                 print("*PP* Setting bell position: " + pPart.transform.TransformPoint(0, -0.5f, 0));
-                srbBell.position = pPart.transform.TransformPoint(0, -0.5f, 0);
-                pPart.AddAttachment(srbBell, true);
+                bellTransform.position = pPart.transform.TransformPoint(0, -0.5f, 0);
+
+                var bellRotation = bellTransform.eulerAngles;
+                bellRotation.z = startDirection - bellDirection;
+                bellTransform.localEulerAngles = bellRotation;
+
+                pPart.AddAttachment(bellTransform, true);
 
                 // Move the bottom attach node into position.
                 // This needs to be done in flight mode too for the joints to work correctly
@@ -396,9 +405,10 @@ namespace ProceduralParts
 
         private void UpdateBell()
         {
-            if (selectedBell == null || selectedBellName == selectedBell.name)
+            if (selectedBell == null || (selectedBellName == selectedBell.name && oldBellDirection == bellDirection))
                 return;
 
+            
             SRBBellConfig oldSelectedBell = selectedBell;
 
             if (!srbConfigs.TryGetValue(selectedBellName, out selectedBell))
@@ -411,11 +421,18 @@ namespace ProceduralParts
 
             oldSelectedBell.model.gameObject.SetActive(false);
 
+            var bellRotation = bellTransform.localEulerAngles;
+            bellRotation.z = startDirection - bellDirection;
+            bellTransform.localEulerAngles = bellRotation;
+
+            
             MoveBottomAttachmentAndNode(selectedBell.srbAttach.position - oldSelectedBell.srbAttach.position);
 
             InitModulesFromBell();
 
             UpdateMaxThrust();
+
+            oldBellDirection = bellDirection;
         }
 
         private void InitModulesFromBell()
@@ -440,6 +457,7 @@ namespace ProceduralParts
         {
             get { return ModularEnginesChangeThrust != null; }
         }
+
         // ReSharper disable once InconsistentNaming
         private Action<float> ModularEnginesChangeThrust;
         // ReSharper disable once InconsistentNaming
@@ -463,6 +481,13 @@ namespace ProceduralParts
 
         [KSPField(isPersistant = false, guiActive = false, guiActiveEditor = false, guiName = "Thrust")]
         public string thrustME;
+
+        [KSPField(isPersistant = true, guiName = "Direction", guiActive = false, guiActiveEditor = true, guiFormat = "F3", guiUnits = "°"),
+         UI_FloatEdit(scene = UI_Scene.Editor, minValue = -25f, maxValue = 25f, incrementLarge = 5f, incrementSmall = 1f, incrementSlide = 0.1f, sigFigs = 2, unit = "°")]
+        public float bellDirection = 0;
+        private float oldBellDirection;
+
+        private float startDirection = 0f;
 
         // ReSharper disable once InconsistentNaming
         [KSPField]
@@ -515,16 +540,17 @@ namespace ProceduralParts
         private void UpdateThrust(bool force = false)
         {
             // ReSharper disable CompareOfFloatsByEqualityOperator
-            if (!force && oldThrust == thrust && burnTimeME == oldBurnTimeME)
+            if (!force && oldThrust == thrust && burnTimeME == oldBurnTimeME && oldBellDirection == bellDirection)
                 return;
             // ReSharper restore CompareOfFloatsByEqualityOperator
 
             Vector3 oldAttach = selectedBell.srbAttach.position;
             UpdateThrustDependentCalcs();
             MoveBottomAttachmentAndNode(selectedBell.srbAttach.position - oldAttach);
-
+            
             oldThrust = thrust;
             oldBurnTimeME = burnTimeME;
+
             if(HighLogic.LoadedSceneIsEditor)
                 GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
         }
@@ -541,7 +567,6 @@ namespace ProceduralParts
                 float _burnTime = (float)(solidFuel.amount / (fuelRate / solidFuel.info.density));
                 burnTime = string.Format("{0:F1}s", _burnTime);
             }
-
         }
 
         private void UpdateThrustDependentCalcs()

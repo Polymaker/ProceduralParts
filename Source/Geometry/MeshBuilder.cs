@@ -93,9 +93,10 @@ namespace ProceduralParts.Geometry
             return CreateSideMesh(adapterShape);
         }
         
-        private static UncheckedMesh CreateMesh(List<Vertex> vertices, List<int> triangleIndices)
+        private static UncheckedMesh WriteMesh(List<Vertex> vertices, List<int> triangleIndices)
         {
             var mesh = new UncheckedMesh(vertices.Count, triangleIndices.Count / 3);
+
             for (int i = 0; i < vertices.Count; i++)
             {
                 mesh.verticies[i] = vertices[i].Pos;
@@ -103,6 +104,7 @@ namespace ProceduralParts.Geometry
                 mesh.tangents[i] = vertices[i].Tan;
                 mesh.uv[i] = vertices[i].Uv;
             }
+
             for (int i = 0; i < triangleIndices.Count; i++)
                 mesh.triangles[i] = triangleIndices[i];
 
@@ -160,7 +162,7 @@ namespace ProceduralParts.Geometry
                 }
             }
 
-            return CreateMesh(vertices, triangles);
+            return WriteMesh(vertices, triangles);
         }
 
         private static UncheckedMesh CreateEndsMesh(MeshProfile shape)
@@ -198,36 +200,33 @@ namespace ProceduralParts.Geometry
                 triangles.Add(botcenterIdx + 1 + i);
             }
 
-            return CreateMesh(vertices, triangles);
+            return WriteMesh(vertices, triangles);
         }
 
-        private static List<int> Triangulate(MeshPoint point)
+        private static IEnumerable<int> Triangulate(MeshPoint point)
         {
             //sections points are ordered by radial angle (outward), so 'point.Next' is at the left of 'point'
             return Triangulate(point.Next, point, point.Bottom.Next, point.Bottom);
         }
 
-        private static List<int> Triangulate(MeshPoint tl, MeshPoint tr, MeshPoint bl, MeshPoint br)
+        private static IEnumerable<int> Triangulate(MeshPoint tl, MeshPoint tr, MeshPoint bl, MeshPoint br)
         {
+            //if the points are close (eg. hard edge) skip the triangle
+            if (tl.Point.Position.IsCloseTo(tr.Point.Position) &&
+                bl.Point.Position.IsCloseTo(br.Point.Position))
+                return new int[0];
+
             var triangles = new List<int>();
-
-
             //NOTE: Unity use a clockwise triangle winding
 
             //method #1 |/|
-            //if (!tl.Value.Pos.CloseTo(tr.Value.Pos))
-            //{
-                triangles.Add(tl.vIndex);
-                triangles.Add(tr.vIndex);
-                triangles.Add(bl.vIndex);
-            //}
+            triangles.Add(tl.vIndex);
+            triangles.Add(tr.vIndex);
+            triangles.Add(bl.vIndex);
 
-            //if (!bl.Value.Pos.CloseTo(br.Value.Pos))
-            //{
-                triangles.Add(bl.vIndex);
-                triangles.Add(tr.vIndex);
-                triangles.Add(br.vIndex);
-            //}
+            triangles.Add(bl.vIndex);
+            triangles.Add(tr.vIndex);
+            triangles.Add(br.vIndex);
 
             ////method #2 |\|
             //triangles.Add(tl.vIndex);

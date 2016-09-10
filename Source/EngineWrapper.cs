@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using UnityEngine;
+using System.Linq;
 
 namespace KSPAPIExtensions.Utils
 {
@@ -72,6 +74,7 @@ namespace KSPAPIExtensions.Utils
                 }
             }
         }
+
         public void SetupPropellant()
         {
             switch (type)
@@ -86,6 +89,7 @@ namespace KSPAPIExtensions.Utils
                     throw new InvalidProgramException();
             }
         }
+
         public BaseActionList Actions
         {
             get
@@ -101,6 +105,7 @@ namespace KSPAPIExtensions.Utils
                 }
             }
         }
+
         public bool getIgnitionState
         {
             get
@@ -145,6 +150,7 @@ namespace KSPAPIExtensions.Utils
                 }
             }
         }
+
         public FloatCurve atmosphereCurve
         {
             get
@@ -174,6 +180,7 @@ namespace KSPAPIExtensions.Utils
                 }
             }
         }
+
         public FloatCurve velCurve
         {
             get
@@ -203,6 +210,7 @@ namespace KSPAPIExtensions.Utils
                 }
             }
         }
+
         public bool useVelCurve
         {
             get
@@ -232,6 +240,7 @@ namespace KSPAPIExtensions.Utils
                 }
             }
         }
+
         public float maxThrust
         {
             get
@@ -336,6 +345,7 @@ namespace KSPAPIExtensions.Utils
             }
             set
             {
+                
                 switch (type)
                 {
                     case ModuleType.MODULEENGINES:
@@ -349,6 +359,23 @@ namespace KSPAPIExtensions.Utils
                 }
             }
         }
+
+        //public Transform ThrustTransform
+        //{
+        //    get
+        //    {
+        //        switch (type)
+        //        {
+        //            case ModuleType.MODULEENGINES:
+        //                return mE.thrustTransforms.FirstOrDefault(t => t.name == mE.thrustVectorTransformName);
+        //            case ModuleType.MODULEENGINESFX:
+        //                return mEFX.thrustTransforms.FirstOrDefault(t => t.name == mE.thrustVectorTransformName);
+        //            default:
+        //                return null;
+        //                //throw new InvalidProgramException();
+        //        }
+        //    }
+        //}
     }
     // ReSharper restore InconsistentNaming
 }
