@@ -92,13 +92,7 @@ namespace ProceduralParts.Geometry
         }
 
         public ProfilePoint(Vector2 position, Vector2 normal)
-        {
-            Position = position;
-            Normal = normal;
-            SideUV = 0f;
-            angleIsDirty = true;
-            RadialUV = RadialAngle.Degrees / 360f;
-        }
+            : this(position, normal, 0f) { }
 
         public ProfilePoint(Vector2 position, Vector2 normal, float uV)
         {
@@ -107,6 +101,8 @@ namespace ProceduralParts.Geometry
             SideUV = uV;
             angleIsDirty = true;
             RadialUV = RadialAngle.Degrees / 360f;
+            RadialUV = Mathf.Round(RadialUV * 1000f) / 1000f;
+
         }
 
         private Angle GetRadialAngle(bool includeNormal = false)

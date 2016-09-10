@@ -53,6 +53,8 @@ namespace ProceduralParts.Geometry
             InitializePoints();
 
             CalculateTopUVs();
+
+            FixRadialUVs();
         }
 
         public ProfileSection(IEnumerable<ProfilePoint> points)
@@ -114,6 +116,21 @@ namespace ProceduralParts.Geometry
             var c = (point.Next.Position - point.Position).magnitude;
             var p = (a + b + c) / 2f;
             return Mathf.Sqrt(p * (p - a) * (p - b) * (p - c));
+        }
+
+        private void FixRadialUVs()
+        {
+            for (int i = 1; i < PointCount - 2; i++)
+            {
+                var pt1 = Points[i];
+                var pt2 = pt1.Next;
+                if (Mathf.Abs(pt1.RadialUV - pt2.RadialUV) < 0.005f && pt1.RadialUV > pt2.RadialUV)
+                {
+                    var tmpUv = pt1.RadialUV;
+                    pt1.RadialUV = pt2.RadialUV;
+                    pt2.RadialUV = tmpUv;
+                }
+            }
         }
 
         public static ProfileSection CreateSorted(params ProfilePoint[] points)
@@ -189,22 +206,15 @@ namespace ProceduralParts.Geometry
                         curUV = curUV - 1f;
                     else
                         nextUV += 1f;
-                    //nextUV = (1f - curUV) + nextUV;
-
                 }
 
                 if (uv >= curUV && uv <= nextUV)
                 {
                     var delta = (uv - curUV) / (nextUV - curUV);
+                    if (float.IsNaN(delta))
+                        delta = 0.5f;
                     return ProfilePoint.Interpolate(Points[i], Points[i].Next, delta);
                 }
-                //else if (uv >= Points[i].RadialUV && flag)
-                //{
-                //    curUV = Points[i].RadialUV;
-                //    //nextUV = 
-                //    var delta = (uv - curUV) / (nextUV - curUV);
-                //    return ProfilePoint.Interpolate(Points[i], Points[i].Next, delta);
-                //}
             }
             return null;
         }
@@ -231,8 +241,6 @@ namespace ProceduralParts.Geometry
                 {
                     if (Mathf.Abs(section1.Points[i].SideUV - section2.Points[i].SideUV) > 0.01f)
                         return false;
-                    //if (section1.Points[i].RadialAngle.Distance(section2.Points[i].RadialAngle) > 1)
-                    //    return false;
                 }
                 return true;
             }
@@ -256,33 +264,27 @@ namespace ProceduralParts.Geometry
 
             const float errorDist = 0.0001f;
             var uvList = new List<float>();
-            //uvList.AddRange(new float[] { 0f, 0.125f, 0.25f, 0.375f, 0.5f, 0.625f, 0.75f, 0.875f });
+
+            uvList.AddRange(new float[] { 0f, 0.125f, 0.25f, 0.375f, 0.5f, 0.625f, 0.75f, 0.875f });
+
             uvList.AddRange(section1.Points.Select(p => p.RadialUV));
             uvList.AddRange(section2.Points.Select(p => p.RadialUV));
             uvList.OrderListBy(uv => uv);
             uvList = uvList.Distinct().ToList();
-            uvList = uvList.RemoveDoubles((x, y) => Mathf.Abs(x - y) < errorDist).ToList();
+            //uvList = uvList.RemoveDoubles((x, y) => Mathf.Abs(x - y) < errorDist).ToList();
 
             if (uvList.Count > 100)
             {
                 uvList = uvList.RemoveDoubles((x, y) => Mathf.Abs(x - y) < 0.001f).ToList();
             }
 
-            //float smallestGap = 1f;
-            
-            //for (int i = 0; i < uvList.Count - 1; i++)
-            //{
-            //    var gap = uvList[i + 1] - uvList[i];
-            //    if (gap != 0f && gap > errorDist && gap < smallestGap)
-            //        smallestGap = gap;
-            //}
             
             for (int i = 0; i < uvList.Count; i++)
             {
                 var currentUV = uvList[i];
-                
-                var sec1Points = combinedPoints.Where(p => p.Section == section1 && Mathf.Abs(p.RadialUV - currentUV) <= errorDist).ToList();
-                var sec2Points = combinedPoints.Where(p => p.Section == section2 && Mathf.Abs(p.RadialUV - currentUV) <= errorDist).ToList();
+
+                var sec1Points = combinedPoints.Where(p => p.Section == section1 && Mathf.Abs(p.RadialUV - currentUV) < errorDist).ToList();
+                var sec2Points = combinedPoints.Where(p => p.Section == section2 && Mathf.Abs(p.RadialUV - currentUV) < errorDist).ToList();
                 combinedPoints.Remove(sec1Points);
                 combinedPoints.Remove(sec2Points);
 
@@ -309,15 +311,7 @@ namespace ProceduralParts.Geometry
                         continue;
                     }
                 }
-                else if (sec1Points.Count == 0 && sec2Points.Count == 0)
-                {
-                    continue;
-                }
-                //else if (sec1Points.Count == 0 && sec2Points.Count == 0)
-                //{
-                //    finalPoints.Add(sec1Points.First().Clone());
-                //    break;
-                //}
+
                 finalPoints.Add(section1.InterpolateUV(currentUV));
             }
 
