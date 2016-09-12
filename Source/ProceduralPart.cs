@@ -203,7 +203,6 @@ namespace ProceduralParts
 			GameEvents.onPartRemove.Remove(OnPartRemove);
         }
 
-
         public void OnUpdateEditor()
         {
             if (skipNextUpdate)

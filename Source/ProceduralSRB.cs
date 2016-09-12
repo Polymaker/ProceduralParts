@@ -12,6 +12,9 @@ namespace ProceduralParts
     {
         #region callbacks
 
+        [KSPField(isPersistant =true)]
+        public bool isSymmetryOriginal = false;
+
         public override void OnAwake()
         {
             base.OnAwake();
@@ -112,7 +115,6 @@ namespace ProceduralParts
 				return;
             if (selectedBell == null)
                 return;
-
             if (UsingME)
                 UpdateMaxThrust();
             else
@@ -138,20 +140,35 @@ namespace ProceduralParts
 
         public void OnEditorPartEvent(ConstructionEventType type, Part part)
         {
+            if (!HighLogic.LoadedSceneIsEditor)
+                return;
+
             if (part != this.part)
                 return;
-            ClearLines();
-            if (type == ConstructionEventType.PartCreated ||
-                type == ConstructionEventType.PartCopied ||
-                type == ConstructionEventType.PartAttached)
+
+            if (part != null && type != ConstructionEventType.PartDeleted)
             {
-                try
+                if (type == ConstructionEventType.PartCopied || 
+                    type == ConstructionEventType.PartCreated || 
+                    type == ConstructionEventType.PartAttached)
                 {
-                    
-                    SetBellRotation();
+                    isSymmetryOriginal = true;
+                    foreach (var counterPart in part.symmetryCounterparts)
+                        counterPart.GetComponent<ProceduralSRB>().isSymmetryOriginal = false;
                 }
-                catch { }
+
+                if (type == ConstructionEventType.PartCreated || 
+                    type == ConstructionEventType.PartCopied || 
+                    type == ConstructionEventType.PartAttached)
+                {
+                    SetBellRotation();
+                    foreach (var counterPart in part.symmetryCounterparts)
+                        counterPart.GetComponent<ProceduralSRB>().SetBellRotation();
+                }
+
             }
+
+
         }
 
         [KSPField]
@@ -466,82 +483,31 @@ namespace ProceduralParts
             {
                 if (bellTransform == null)
                     return;
-                Debug.Log("PP** SetBellRotation ***************");
-                bellTransform.localEulerAngles = Vector3.zero;
-                if (invertDirection)
-                    Debug.Log("Inverted Part!!");
-                var rotAxis = Vector3.Cross(part.partTransform.right, part.partTransform.up);
 
-                bool isSurfAttached = part.srfAttachNode.attachedPart == part.parent;
+                //Debug.Log(string.Format("PP** SetBellRotation {0} {1} ***************", part.name, part.GetInstanceID()));
+                //Debug.Log("isSymmetryOriginal = " + isSymmetryOriginal);
+                //Debug.Log("Is inverted = " + invertDirection);
+
+                bellTransform.localEulerAngles = Vector3.zero;
+                var rotAxis = Vector3.Cross(part.partTransform.right, part.partTransform.up);
 
                 var adjustedDir = invertDirection ? bellDirection : -bellDirection;
 
-                if (part.symMethod == SymmetryMethod.Mirror && !isSurfAttached)
+                if (part.symMethod == SymmetryMethod.Mirror && !part.IsSurfaceAttached())
                 {
-
-                    var stackTop = part.GetSymmetryStackTop();
-
-                    if (stackTop != part)
-                    {
-                        var curObj = part.transform;
-                        while (curObj != stackTop.transform && curObj != null)
-                        {
-                            Debug.Log(String.Format("GO {0} {1}, local rot = {2} world rot = {3}", curObj.name, curObj.GetInstanceID(), curObj.localEulerAngles, curObj.eulerAngles));
-                            var tansPart = curObj.GetComponent<Part>();
-                            if (tansPart != null)
-                            {
-                                Debug.Log(string.Format("  GO is Part, attRotation = {0} attRotation0 = {1}", tansPart.attRotation.eulerAngles, tansPart.attRotation0.eulerAngles));
-                            }
-
-                            curObj = curObj.transform.parent;
-                        }
-                        
-                        //var baseRot = part.transform.rotation * Quaternion.Inverse(curRot);
-                        //if (partsBetween.Any(p=>(p.attRotation.eulerAngles - p.transform.localRotation.eulerAngles).magnitude > 0.1f))
-                        //    adjustedDir *= -1;
-
-                        //Debug.Log("attach nodes angle = " + curRot.eulerAngles);
-                        Debug.Log("stack local angle = " + stackTop.transform.localRotation.eulerAngles);
-                        Debug.Log("stack world angle = " + stackTop.transform.rotation.eulerAngles);
-                        //Debug.Log("baseRot = " + baseRot.eulerAngles);
-
-
-                    }
-                    else if(stackTop == null)
-                        Debug.Log("stack top is null!");
-                    else
-                        Debug.Log("stack top is " + stackTop.name + " " + stackTop.GetInstanceID());
-
-                    
-                    if (stackTop.IsSurfaceAttached())
-                    {
-                        var firstStackChild = stackTop.children.FirstOrDefault();
-                        if (part.transform.localRotation != part.attRotation0 || 
-                        //part.transform.rotation != part.attRotation ||
-                        (firstStackChild != null &&
-                        (firstStackChild.transform.localRotation != firstStackChild.attRotation0/* ||
-                        firstStackChild.transform.rotation != firstStackChild.attRotation*/)))
-                        {
-                            Debug.Log("Rot not equal");
-                            adjustedDir *= -1;
-                        }
-                        else
-                            Debug.Log("Rot is equal");
-                    }
-                    else
-                    {
-                        Debug.Log("Top part is not surface attached!");
-                    }
-                    //Debug.Log("stackTop.transform.rotation.eulerAngles = " + stackTop.transform.rotation.eulerAngles);
-
+                    if (!isSymmetryOriginal)
+                        adjustedDir *= -1;
                 }
+
                 bellTransform.Rotate(rotAxis, adjustedDir, Space.World);
-                
-                
+
+
             }
-            catch { }
-            
-           
+            catch (Exception ex)
+            {
+                Debug.LogWarning("PP** Exception within SetBellRotation:");
+                Debug.LogException(ex);
+            }
         }
 
 

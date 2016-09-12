@@ -88,12 +88,18 @@ namespace ProceduralParts.Geometry
         private void InitializePoints()
         {
             //ensure that we have a point at 0° to preserve texture alignment
-            //if (!_Points.Any(p => Mathf.Approximately(p.RadialUV, 0f)))
-            //{
-            //    var pointList = _Points.ToList();
-            //    pointList.Add(InterpolateByUV(0f));
-            //    _Points = OrderProfilePoints(pointList);
-            //}
+            if (!_Points.Any(p => Mathf.Approximately(p.RadialUV, 0f)))
+            {
+                var pointList = _Points.ToList();
+                var pointAtZero = InterpolateByUV(0f);
+                if (pointAtZero.RadialUV != 0)
+                {
+                    pointAtZero.Position = new Vector2(pointAtZero.Position.x, 0f);
+                    pointAtZero.CalculateAngles();
+                }
+                pointList.Add(pointAtZero);
+                _Points = OrderProfilePoints(pointList);
+            }
 
             for (int i = 0; i < _Points.Length; i++)
             {
@@ -167,17 +173,29 @@ namespace ProceduralParts.Geometry
                 //var wrapPoint = ProfilePoint.Interpolate(orderedPoints.First(), orderedPoints.Last(), 0.5f);
                 //orderedPoints.Insert(0, wrapPoint);
                 //orderedPoints.Add(wrapPoint);
+                
                 int foundIdx = -1;
-                for (int i = 0; i < orderedPoints.Count; i++)
+
+                if (orderedPoints.Count(p => Mathf.Approximately(p.RadialUV, 0)) == 1)
                 {
-                    var p1 = orderedPoints[i];
-                    var p2 = orderedPoints[(i + 1) % orderedPoints.Count];
-                    if (p1.Position.IsCloseTo(p2.Position))
+                    var pointAtZero = orderedPoints.First(p => Mathf.Approximately(p.RadialUV, 0));
+                    foundIdx = orderedPoints.IndexOf(pointAtZero);
+                    orderedPoints.Insert(foundIdx, pointAtZero.Clone());
+                }
+                else
+                {
+                    for (int i = 0; i < orderedPoints.Count; i++)
                     {
-                        foundIdx = i;
-                        break;
+                        var p1 = orderedPoints[i];
+                        var p2 = orderedPoints[(i + 1) % orderedPoints.Count];
+                        if (p1.Position.IsCloseTo(p2.Position))
+                        {
+                            foundIdx = i;
+                            break;
+                        }
                     }
                 }
+                
                 if (foundIdx < 0)
                     orderedPoints.Add(orderedPoints.First());
                 else
@@ -396,7 +414,7 @@ namespace ProceduralParts.Geometry
 
         #endregion
 
-        #region Profile scaling methods 
+        #region Profile generation (mostly scaling) methods 
 
         public static ProfileSection GetMk2Section(float diameter)
         {
@@ -420,8 +438,12 @@ namespace ProceduralParts.Geometry
             {
                 var curAngle = theta * s;
                 var norm = ProfilePoint.GetPoint(curAngle, 1f);
-                points.Add(new ProfilePoint(ProfilePoint.GetPoint(curAngle - halfT, radius), norm));
-                points.Add(new ProfilePoint(ProfilePoint.GetPoint(curAngle + halfT, radius), norm));
+                var pt1 = new ProfilePoint(ProfilePoint.GetPoint(curAngle - halfT, radius), norm);
+                var pt2 = new ProfilePoint(ProfilePoint.GetPoint(curAngle + halfT, radius), norm);
+                points.Add(pt1);
+                //if (s == 0)
+                //    points.Add(ProfilePoint.Lerp(pt1, pt2, 0.5f));
+                points.Add(pt2);
             }
 
             return new ProfileSection(points.ToArray());

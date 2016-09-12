@@ -219,23 +219,38 @@ namespace ProceduralParts.Geometry
             var triangles = new List<int>();
             //NOTE: Unity use a clockwise triangle winding
 
-            //method #1 |/|
-            triangles.Add(tl.vIndex);
-            triangles.Add(tr.vIndex);
-            triangles.Add(bl.vIndex);
+            var targetMiddle = Vector3.Lerp(Vector3.Lerp(tl.Value.Pos, tr.Value.Pos, 0.5f), Vector3.Lerp(bl.Value.Pos, br.Value.Pos, 0.5f), 0.5f);
 
-            triangles.Add(bl.vIndex);
-            triangles.Add(tr.vIndex);
-            triangles.Add(br.vIndex);
+            var tlbrMiddle = Vector3.Lerp(tl.Value.Pos, br.Value.Pos, 0.5f);
+            var trblMiddle = Vector3.Lerp(tr.Value.Pos, bl.Value.Pos, 0.5f);
 
-            ////method #2 |\|
-            //triangles.Add(tl.vIndex);
-            //triangles.Add(br.vIndex);
-            //triangles.Add(bl.vIndex);
+            var tlbrDist = (targetMiddle - tlbrMiddle).magnitude;
+            var trblDist = (targetMiddle - trblMiddle).magnitude;
 
-            //triangles.Add(tl.vIndex);
-            //triangles.Add(tr.vIndex);
-            //triangles.Add(br.vIndex);
+            //find which triangle pattern creates an edge closest to the desired shape
+            if (tlbrDist < trblDist)
+            {
+                //From top left to bottom right |\|
+                triangles.Add(tl.vIndex);
+                triangles.Add(br.vIndex);
+                triangles.Add(bl.vIndex);
+
+                triangles.Add(tl.vIndex);
+                triangles.Add(tr.vIndex);
+                triangles.Add(br.vIndex);
+            }
+            else
+            {
+                //From top right to bottom left |/|
+                triangles.Add(tl.vIndex);
+                triangles.Add(tr.vIndex);
+                triangles.Add(bl.vIndex);
+
+                triangles.Add(bl.vIndex);
+                triangles.Add(tr.vIndex);
+                triangles.Add(br.vIndex);
+            }
+
             return triangles;
         }
 

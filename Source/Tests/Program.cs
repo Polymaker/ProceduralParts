@@ -12,7 +12,7 @@ namespace Tests
     {
         static void Main(string[] args)
         {
-            var hexProfile = ProfileSection.GetPrismSection(8, 0.625f);
+            var hexProfile = ProfileSection.GetPrismSection(3, 0.625f);
             var cylinderProfile = ProfileSection.GetCylinderSection(1.25f);
             //var mk2Profile = ProfileSection.GetMk2Section(1.5f);
             //foreach (var point in mk2Profile.Points)
