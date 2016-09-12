@@ -140,11 +140,11 @@ IF "$(ConfigurationName)"  == "Test KSP" (
 	echo "Copying " %25%25I
 	copy %25%25I "%25kspPPPath%25Plugins\"
 	)
-	cd Parts
-	for /R %25%25I in (*) do (
-	echo "Copying " %25%25I
-	copy %25%25I "%25kspPPPath%25Parts\"
-	)
+	REM cd Parts
+	REM for /R %25%25I in (*) do (
+	REM echo "Copying " %25%25I
+	REM copy %25%25I "%25kspPPPath%25Parts\"
+	REM )
 )</PostBuildEvent>
   </PropertyGroup>
   <PropertyGroup>

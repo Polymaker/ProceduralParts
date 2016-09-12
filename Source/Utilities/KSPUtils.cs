@@ -189,6 +189,86 @@ namespace KSPAPIExtensions
 			return PartRelationship.Unrelated;
 		}
 
+        public static bool IsSurfaceAttached(this Part part)
+        {
+            return part.srfAttachNode != null && part.srfAttachNode.attachedPart == part.parent;
+        }
+
+        public static Part GetSymmetryParent(this Part part)
+        {
+            if (part.parent == null || part.symmetryCounterparts.Count == 0)
+                return null;
+            Part curParent = part;
+            var symCount = part.symmetryCounterparts.Count;
+            do
+            {
+                bool isSurfAttached = curParent.srfAttachNode.attachedPart == curParent.parent;
+                if (isSurfAttached)
+                    return curParent.parent;
+                else if (curParent.symmetryCounterparts.Count == 0 || curParent.symmetryCounterparts.Count != symCount)
+                    return curParent;
+            }
+            while ((curParent = curParent.parent) != null);
+            
+            return null;
+        }
+
+        public static IEnumerable<Part> GetChildsToPart(this Part parent, Part part)
+        {
+            Part curParent = part.parent;
+            if (parent == part || curParent == null)
+                return new Part[0];
+            var partList = new List<Part>();
+            do
+            {
+                partList.Add(curParent);
+                if (curParent.parent == parent)
+                {
+                    partList.Reverse();
+                    return partList;
+                }
+            }
+            while ((curParent = curParent.parent) != null);
+            return new Part[0];
+        }
+
+        public static Part GetSymmetryStackTop(this Part part)
+        {
+            if (part.parent == null)
+                return part;
+            Part curPart = part;
+            var symCount = part.symmetryCounterparts.Count;
+            do
+            {
+                if (curPart.IsSurfaceAttached() || curPart.parent == null)
+                    return curPart;
+
+                if (curPart.parent.symmetryCounterparts.Count == 0 ||
+                    curPart.parent.symmetryCounterparts.Count != symCount)
+                    return curPart;
+                if (curPart.symmetryCounterparts.All(s => s.parent == curPart.parent))//stack attached to the same multi-coupler
+                {
+                    Debug.Log("Part is attached to multi-coupler");
+                    return curPart;
+                }
+            }
+            while ((curPart = curPart.parent) != null);
+
+            return null;
+        }
+
+        public static AttachNode.NodeType GetAttachType(this Part part)
+        {
+            if (part.parent == null)
+                return (AttachNode.NodeType)0;
+            var node = part.parent.findAttachNodeByPart(part);
+            if (node == null)
+            {
+                Debug.Log("Part is not attached to parent?!");
+            }
+            return node.nodeType;
+        }
+
 		/// <summary>
 		/// Test if two parts are related by a set of criteria. Because PartRelationship is a flags
 		/// enumeration, multiple flags can be tested at the same time.

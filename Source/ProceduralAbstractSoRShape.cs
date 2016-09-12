@@ -1349,6 +1349,7 @@ namespace ProceduralParts
             }
         }
 
+
         public void DebugMeshTangents(Mesh mesh, Color color)
         {
             if (PreviousTangents == null)

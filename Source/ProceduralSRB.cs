@@ -60,6 +60,8 @@ namespace ProceduralParts
             {
                 InitializeBells();
                 UpdateMaxThrust();
+                if (GameSceneFilter.AnyEditor.IsLoaded())
+                    GameEvents.onEditorPartEvent.Add(OnEditorPartEvent);
             }
             catch (Exception ex)
             {
@@ -67,6 +69,18 @@ namespace ProceduralParts
                 throw;
             }
             Debug.Log("OnStartEnd");
+        }
+
+        public void OnDestroy()
+        {
+            try
+            {
+                ClearLines();
+                if (GameSceneFilter.AnyEditor.IsLoaded())
+                    GameEvents.onEditorPartEvent.Remove(OnEditorPartEvent);
+            }
+            catch { }
+
         }
 
         public override void OnUpdate()
@@ -120,6 +134,24 @@ namespace ProceduralParts
 
             attachedEndSize = minDia;
             UpdateMaxThrust();
+        }
+
+        public void OnEditorPartEvent(ConstructionEventType type, Part part)
+        {
+            if (part != this.part)
+                return;
+            ClearLines();
+            if (type == ConstructionEventType.PartCreated ||
+                type == ConstructionEventType.PartCopied ||
+                type == ConstructionEventType.PartAttached)
+            {
+                try
+                {
+                    
+                    SetBellRotation();
+                }
+                catch { }
+            }
         }
 
         [KSPField]
@@ -279,9 +311,6 @@ namespace ProceduralParts
 
             bellTransform = part.FindModelTransform(srbBellName);
             thrustTransform = bellTransform.Find(thrustVectorTransformName);
-            //startDirection = thrustTransform.localEulerAngles.z;
-            startDirection = bellTransform.localEulerAngles.z;
-            
 
             foreach (SRBBellConfig conf in srbConfigs.Values)
             {
@@ -379,9 +408,7 @@ namespace ProceduralParts
                 print("*PP* Setting bell position: " + pPart.transform.TransformPoint(0, -0.5f, 0));
                 bellTransform.position = pPart.transform.TransformPoint(0, -0.5f, 0);
 
-                var bellRotation = bellTransform.eulerAngles;
-                bellRotation.z = startDirection - bellDirection;
-                bellTransform.localEulerAngles = bellRotation;
+                SetBellRotation();
 
                 pPart.AddAttachment(bellTransform, true);
 
@@ -405,7 +432,7 @@ namespace ProceduralParts
 
         private void UpdateBell()
         {
-            if (selectedBell == null || (selectedBellName == selectedBell.name && oldBellDirection == bellDirection))
+            if (selectedBell == null || (selectedBellName == selectedBell.name && oldBellDirection == bellDirection && oldInvertDirection == invertDirection))
                 return;
 
             
@@ -421,10 +448,7 @@ namespace ProceduralParts
 
             oldSelectedBell.model.gameObject.SetActive(false);
 
-            var bellRotation = bellTransform.localEulerAngles;
-            bellRotation.z = startDirection - bellDirection;
-            bellTransform.localEulerAngles = bellRotation;
-
+            SetBellRotation();
             
             MoveBottomAttachmentAndNode(selectedBell.srbAttach.position - oldSelectedBell.srbAttach.position);
 
@@ -433,7 +457,93 @@ namespace ProceduralParts
             UpdateMaxThrust();
 
             oldBellDirection = bellDirection;
+            oldInvertDirection = invertDirection;
         }
+
+        private void SetBellRotation()
+        {
+            try
+            {
+                if (bellTransform == null)
+                    return;
+                Debug.Log("PP** SetBellRotation ***************");
+                bellTransform.localEulerAngles = Vector3.zero;
+                if (invertDirection)
+                    Debug.Log("Inverted Part!!");
+                var rotAxis = Vector3.Cross(part.partTransform.right, part.partTransform.up);
+
+                bool isSurfAttached = part.srfAttachNode.attachedPart == part.parent;
+
+                var adjustedDir = invertDirection ? bellDirection : -bellDirection;
+
+                if (part.symMethod == SymmetryMethod.Mirror && !isSurfAttached)
+                {
+
+                    var stackTop = part.GetSymmetryStackTop();
+
+                    if (stackTop != part)
+                    {
+                        var curObj = part.transform;
+                        while (curObj != stackTop.transform && curObj != null)
+                        {
+                            Debug.Log(String.Format("GO {0} {1}, local rot = {2} world rot = {3}", curObj.name, curObj.GetInstanceID(), curObj.localEulerAngles, curObj.eulerAngles));
+                            var tansPart = curObj.GetComponent<Part>();
+                            if (tansPart != null)
+                            {
+                                Debug.Log(string.Format("  GO is Part, attRotation = {0} attRotation0 = {1}", tansPart.attRotation.eulerAngles, tansPart.attRotation0.eulerAngles));
+                            }
+
+                            curObj = curObj.transform.parent;
+                        }
+                        
+                        //var baseRot = part.transform.rotation * Quaternion.Inverse(curRot);
+                        //if (partsBetween.Any(p=>(p.attRotation.eulerAngles - p.transform.localRotation.eulerAngles).magnitude > 0.1f))
+                        //    adjustedDir *= -1;
+
+                        //Debug.Log("attach nodes angle = " + curRot.eulerAngles);
+                        Debug.Log("stack local angle = " + stackTop.transform.localRotation.eulerAngles);
+                        Debug.Log("stack world angle = " + stackTop.transform.rotation.eulerAngles);
+                        //Debug.Log("baseRot = " + baseRot.eulerAngles);
+
+
+                    }
+                    else if(stackTop == null)
+                        Debug.Log("stack top is null!");
+                    else
+                        Debug.Log("stack top is " + stackTop.name + " " + stackTop.GetInstanceID());
+
+                    
+                    if (stackTop.IsSurfaceAttached())
+                    {
+                        var firstStackChild = stackTop.children.FirstOrDefault();
+                        if (part.transform.localRotation != part.attRotation0 || 
+                        //part.transform.rotation != part.attRotation ||
+                        (firstStackChild != null &&
+                        (firstStackChild.transform.localRotation != firstStackChild.attRotation0/* ||
+                        firstStackChild.transform.rotation != firstStackChild.attRotation*/)))
+                        {
+                            Debug.Log("Rot not equal");
+                            adjustedDir *= -1;
+                        }
+                        else
+                            Debug.Log("Rot is equal");
+                    }
+                    else
+                    {
+                        Debug.Log("Top part is not surface attached!");
+                    }
+                    //Debug.Log("stackTop.transform.rotation.eulerAngles = " + stackTop.transform.rotation.eulerAngles);
+
+                }
+                bellTransform.Rotate(rotAxis, adjustedDir, Space.World);
+                
+                
+            }
+            catch { }
+            
+           
+        }
+
 
         private void InitModulesFromBell()
         {
@@ -487,7 +597,10 @@ namespace ProceduralParts
         public float bellDirection = 0;
         private float oldBellDirection;
 
-        private float startDirection = 0f;
+        [KSPField(isPersistant = true, guiName = "Inverted", guiActive = false, guiActiveEditor = true),
+         UI_Toggle(affectSymCounterparts=UI_Scene.None, enabledText="Yes",disabledText="No", scene= UI_Scene.Editor)]
+        public bool invertDirection = false;
+        private bool oldInvertDirection;
 
         // ReSharper disable once InconsistentNaming
         [KSPField]
@@ -712,5 +825,45 @@ namespace ProceduralParts
         }
 
         #endregion
+
+
+        private List<GameObject> MyLines = new List<GameObject>();
+
+        private void ClearLines()
+        {
+            if (MyLines.Count > 0)
+            {
+                MyLines.ForEach(g => Destroy(g));
+                MyLines.Clear();
+                var lineRenders = GetComponents<LineRenderer>();
+                for (int i = 0; i < lineRenders.Length; i++)
+                {
+                    Destroy(lineRenders[i].gameObject);
+                }
+            }
+        }
+
+        private static Material LineMaterial;
+
+        private void DrawLine(Vector3 start, Vector3 end, Color color)
+        {
+            GameObject myLine = new GameObject();
+            myLine.transform.parent = transform;
+            //myLine.layer = 30;
+            LineRenderer lr = myLine.AddComponent<LineRenderer>();
+            lr.useWorldSpace = true;
+            lr.transform.localPosition = Vector3.zero;
+            lr.transform.localEulerAngles = Vector3.zero;
+
+            if (LineMaterial == null)
+                LineMaterial = new Material(Shader.Find("Particles/Additive"));
+            lr.material = LineMaterial;
+            lr.SetColors(color, color);
+            lr.SetWidth(0.025f, 0.025f);
+            lr.SetVertexCount(2);
+            lr.SetPosition(0, start);
+            lr.SetPosition(1, end);
+            MyLines.Add(myLine);
+        }
     }
 }
