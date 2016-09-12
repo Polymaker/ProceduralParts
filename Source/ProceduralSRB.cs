@@ -10,10 +10,8 @@ namespace ProceduralParts
 
     public class ProceduralSRB : PartModule, IPartCostModifier
     {
-        #region callbacks
 
-        [KSPField(isPersistant =true)]
-        public bool isSymmetryOriginal = false;
+        #region callbacks
 
         public override void OnAwake()
         {
@@ -30,7 +28,7 @@ namespace ProceduralParts
 
         public override void OnLoad(ConfigNode node)
         {
-            Debug.Log("OnLoad");
+            //Debug.Log("OnLoad");
             try
             {
                 if (GameSceneFilter.AnyInitializing.IsLoaded())
@@ -41,7 +39,7 @@ namespace ProceduralParts
                 print("OnLoad exception: " + ex);
                 throw;
             }
-            Debug.Log("OnLoad end");
+            //Debug.Log("OnLoad end");
         }
 
         public override string GetInfo()
@@ -58,7 +56,7 @@ namespace ProceduralParts
 
         public override void OnStart(StartState state)
         {
-            Debug.Log("OnStart");
+            //Debug.Log("OnStart");
             try
             {
                 InitializeBells();
@@ -71,19 +69,13 @@ namespace ProceduralParts
                 print("OnStart exception: " + ex);
                 throw;
             }
-            Debug.Log("OnStartEnd");
+            //Debug.Log("OnStartEnd");
         }
 
         public void OnDestroy()
         {
-            try
-            {
-                ClearLines();
-                if (GameSceneFilter.AnyEditor.IsLoaded())
-                    GameEvents.onEditorPartEvent.Remove(OnEditorPartEvent);
-            }
-            catch { }
-
+            if (GameSceneFilter.AnyEditor.IsLoaded())
+                GameEvents.onEditorPartEvent.Remove(OnEditorPartEvent);
         }
 
         public override void OnUpdate()
@@ -98,44 +90,13 @@ namespace ProceduralParts
             {
                 UpdateBell();
                 UpdateThrust();
+                thrustDeflection = Mathf.Clamp(thrustDeflection, -25f, 25f);
             }
             catch (Exception ex)
             {
                 Debug.LogException(ex);
                 enabled = false;
             }
-        }
-
-        //[PartMessageListener(typeof(PartResourceInitialAmountChanged), scenes: GameSceneFilter.AnyEditor)]
-        //public void PartResourceChanged(PartResource resource, double amount)
-		[KSPEvent(guiActive = false, active = true)]
-		public void OnPartResourceInitialAmountChanged(BaseEventData data)
-        {
-			if (!HighLogic.LoadedSceneIsEditor)
-				return;
-            if (selectedBell == null)
-                return;
-            if (UsingME)
-                UpdateMaxThrust();
-            else
-                UpdateThrustDependentCalcs();
-        }
-
-        //[PartMessageListener(typeof(PartAttachNodeSizeChanged), scenes: GameSceneFilter.AnyEditor)]
-        //public void ChangeAttachNodeSize(AttachNode node, float minDia, float area)
-		[KSPEvent(guiActive = false, active = true)]
-		public void ChangeAttachNodeSize(BaseEventData data)
-        {
-			if (!HighLogic.LoadedSceneIsEditor)
-				return;
-			AttachNode node = data.Get<AttachNode> ("node");
-			float minDia = data.Get<float> ("minDia");
-            // ReSharper disable once CompareOfFloatsByEqualityOperator
-            if (node.id != bottomAttachNodeName || minDia == attachedEndSize)
-                return;
-
-            attachedEndSize = minDia;
-            UpdateMaxThrust();
         }
 
         public void OnEditorPartEvent(ConstructionEventType type, Part part)
@@ -148,8 +109,8 @@ namespace ProceduralParts
 
             if (part != null && type != ConstructionEventType.PartDeleted)
             {
-                if (type == ConstructionEventType.PartCopied || 
-                    type == ConstructionEventType.PartCreated || 
+                if (type == ConstructionEventType.PartCopied ||
+                    type == ConstructionEventType.PartCreated ||
                     type == ConstructionEventType.PartAttached)
                 {
                     isSymmetryOriginal = true;
@@ -157,18 +118,48 @@ namespace ProceduralParts
                         counterPart.GetComponent<ProceduralSRB>().isSymmetryOriginal = false;
                 }
 
-                if (type == ConstructionEventType.PartCreated || 
-                    type == ConstructionEventType.PartCopied || 
+                if (type == ConstructionEventType.PartCreated ||
+                    type == ConstructionEventType.PartCopied ||
                     type == ConstructionEventType.PartAttached)
                 {
                     SetBellRotation();
                     foreach (var counterPart in part.symmetryCounterparts)
                         counterPart.GetComponent<ProceduralSRB>().SetBellRotation();
                 }
-
             }
+        }
 
+        //[PartMessageListener(typeof(PartResourceInitialAmountChanged), scenes: GameSceneFilter.AnyEditor)]
+        //public void PartResourceChanged(PartResource resource, double amount)
+        [KSPEvent(guiActive = false, active = true)]
+        public void OnPartResourceInitialAmountChanged(BaseEventData data)
+        {
+            if (!HighLogic.LoadedSceneIsEditor)
+                return;
+            if (selectedBell == null)
+                return;
 
+            if (UsingME)
+                UpdateMaxThrust();
+            else
+                UpdateThrustDependentCalcs();
+        }
+
+        //[PartMessageListener(typeof(PartAttachNodeSizeChanged), scenes: GameSceneFilter.AnyEditor)]
+        //public void ChangeAttachNodeSize(AttachNode node, float minDia, float area)
+        [KSPEvent(guiActive = false, active = true)]
+        public void ChangeAttachNodeSize(BaseEventData data)
+        {
+            if (!HighLogic.LoadedSceneIsEditor)
+                return;
+            AttachNode node = data.Get<AttachNode>("node");
+            float minDia = data.Get<float>("minDia");
+            // ReSharper disable once CompareOfFloatsByEqualityOperator
+            if (node.id != bottomAttachNodeName || minDia == attachedEndSize)
+                return;
+
+            attachedEndSize = minDia;
+            UpdateMaxThrust();
         }
 
         [KSPField]
@@ -179,23 +170,26 @@ namespace ProceduralParts
         //    return thrust * 0.5f * costMultiplier;
         //}
 
-		#region IPartCostModifier implementation
+        #region IPartCostModifier implementation
 
-		public float GetModuleCost (float defaultCost, ModifierStagingSituation sit)
-		{
-			return thrust * 0.5f * costMultiplier;
-		}
+        public float GetModuleCost(float defaultCost, ModifierStagingSituation sit)
+        {
+            return thrust * 0.5f * costMultiplier;
+        }
 
-		public ModifierChangeWhen GetModuleCostChangeWhen ()
-		{
-			return ModifierChangeWhen.CONSTANTLY;
-		}
+        public ModifierChangeWhen GetModuleCostChangeWhen()
+        {
+            return ModifierChangeWhen.CONSTANTLY;
+        }
 
-		#endregion
+        #endregion
 
         #endregion
 
         #region Objects
+
+        [KSPField(isPersistant = true)]
+        public bool isSymmetryOriginal = false;
 
         [KSPField]
         public string srbBellName;
@@ -234,7 +228,7 @@ namespace ProceduralParts
 
         private SRBBellConfig selectedBell;
         private Dictionary<string, SRBBellConfig> srbConfigs;
-        
+
         private static ConfigNode[] srbConfigsSerialized;
 
         [Serializable]
@@ -263,7 +257,7 @@ namespace ProceduralParts
             [Persistent]
             public float chokeEndRatio = 0.5f;
 
-            [Persistent] 
+            [Persistent]
             public string realFuelsEngineType;
 
             public void Load(ConfigNode node)
@@ -329,6 +323,7 @@ namespace ProceduralParts
             bellTransform = part.FindModelTransform(srbBellName);
             thrustTransform = bellTransform.Find(thrustVectorTransformName);
 
+
             foreach (SRBBellConfig conf in srbConfigs.Values)
             {
                 conf.model = part.FindModelTransform(conf.modelName);
@@ -350,7 +345,7 @@ namespace ProceduralParts
 
                 // Only enable the colider for flight mode. This prevents any surface attachments.
                 if (HighLogic.LoadedSceneIsEditor && conf.model.GetComponent<Collider>() != null)
-					Destroy(conf.model.GetComponent<Collider>());
+                    Destroy(conf.model.GetComponent<Collider>());
 
                 conf.model.gameObject.SetActive(false);
             }
@@ -368,7 +363,7 @@ namespace ProceduralParts
                 ModularEnginesChangeThrust = (Action<float>)Delegate.CreateDelegate(typeof(Action<float>), mEC, "ChangeThrust");
                 try
                 {
-                    ModularEnginesChangeEngineType = (Action<string>) Delegate.CreateDelegate(typeof (Action<string>), mEC, "ChangeEngineType");
+                    ModularEnginesChangeEngineType = (Action<string>)Delegate.CreateDelegate(typeof(Action<string>), mEC, "ChangeEngineType");
                 }
                 catch
                 {
@@ -449,10 +444,9 @@ namespace ProceduralParts
 
         private void UpdateBell()
         {
-            if (selectedBell == null || (selectedBellName == selectedBell.name && oldBellDirection == bellDirection && oldInvertDirection == invertDirection))
+            if (selectedBell == null || (selectedBellName == selectedBell.name && oldThrustDeflection == thrustDeflection && oldInvertDeflection == invertDeflection))
                 return;
 
-            
             SRBBellConfig oldSelectedBell = selectedBell;
 
             if (!srbConfigs.TryGetValue(selectedBellName, out selectedBell))
@@ -466,15 +460,15 @@ namespace ProceduralParts
             oldSelectedBell.model.gameObject.SetActive(false);
 
             SetBellRotation();
-            
+
             MoveBottomAttachmentAndNode(selectedBell.srbAttach.position - oldSelectedBell.srbAttach.position);
 
             InitModulesFromBell();
 
             UpdateMaxThrust();
 
-            oldBellDirection = bellDirection;
-            oldInvertDirection = invertDirection;
+            oldThrustDeflection = thrustDeflection;
+            oldInvertDeflection = invertDeflection;
         }
 
         private void SetBellRotation()
@@ -484,14 +478,10 @@ namespace ProceduralParts
                 if (bellTransform == null)
                     return;
 
-                //Debug.Log(string.Format("PP** SetBellRotation {0} {1} ***************", part.name, part.GetInstanceID()));
-                //Debug.Log("isSymmetryOriginal = " + isSymmetryOriginal);
-                //Debug.Log("Is inverted = " + invertDirection);
-
                 bellTransform.localEulerAngles = Vector3.zero;
                 var rotAxis = Vector3.Cross(part.partTransform.right, part.partTransform.up);
 
-                var adjustedDir = invertDirection ? bellDirection : -bellDirection;
+                var adjustedDir = invertDeflection ? thrustDeflection : -thrustDeflection;
 
                 if (part.symMethod == SymmetryMethod.Mirror && !part.IsSurfaceAttached())
                 {
@@ -510,7 +500,6 @@ namespace ProceduralParts
             }
         }
 
-
         private void InitModulesFromBell()
         {
             // Set the bits and pieces
@@ -526,7 +515,7 @@ namespace ProceduralParts
 
         #endregion
 
-        #region Thrust 
+        #region Thrust
 
         // ReSharper disable once InconsistentNaming
         private bool UsingME
@@ -540,7 +529,7 @@ namespace ProceduralParts
         private Action<string> ModularEnginesChangeEngineType;
 
         [KSPField(isPersistant = true, guiName = "Thrust", guiActive = false, guiActiveEditor = true, guiFormat = "F3", guiUnits = "N"),
-		 UI_FloatEdit(scene = UI_Scene.Editor, minValue = 1f, maxValue = float.PositiveInfinity, incrementLarge = 100f, incrementSmall = 10, incrementSlide = 1f, sigFigs = 3, unit="kN", useSI = true )]
+         UI_FloatEdit(scene = UI_Scene.Editor, minValue = 1f, maxValue = float.PositiveInfinity, incrementLarge = 100f, incrementSmall = 10, incrementSlide = 1f, sigFigs = 3, unit = "kN", useSI = true)]
         public float thrust = 250;
         private float oldThrust;
 
@@ -558,15 +547,15 @@ namespace ProceduralParts
         [KSPField(isPersistant = false, guiActive = false, guiActiveEditor = false, guiName = "Thrust")]
         public string thrustME;
 
-        [KSPField(isPersistant = true, guiName = "Direction", guiActive = false, guiActiveEditor = true, guiFormat = "F3", guiUnits = "°"),
+        [KSPField(isPersistant = true, guiName = "Deflection angle", guiActive = false, guiActiveEditor = true, guiFormat = "F3", guiUnits = "°"),
          UI_FloatEdit(scene = UI_Scene.Editor, minValue = -25f, maxValue = 25f, incrementLarge = 5f, incrementSmall = 1f, incrementSlide = 0.1f, sigFigs = 2, unit = "°")]
-        public float bellDirection = 0;
-        private float oldBellDirection;
+        public float thrustDeflection = 0;
+        private float oldThrustDeflection;
 
         [KSPField(isPersistant = true, guiName = "Inverted", guiActive = false, guiActiveEditor = true),
-         UI_Toggle(affectSymCounterparts=UI_Scene.None, enabledText="Yes",disabledText="No", scene= UI_Scene.Editor)]
-        public bool invertDirection = false;
-        private bool oldInvertDirection;
+         UI_Toggle(affectSymCounterparts = UI_Scene.None, enabledText = "Yes", disabledText = "No", scene = UI_Scene.Editor)]
+        public bool invertDeflection = false;
+        private bool oldInvertDeflection;
 
         // ReSharper disable once InconsistentNaming
         [KSPField]
@@ -577,8 +566,8 @@ namespace ProceduralParts
 
         // Real fuels integration
         //[PartMessageListener(typeof(PartEngineConfigChanged))]
-		[KSPEvent(guiActive = false, active = true)]
-		public void OnPartEngineConfigsChanged()
+        [KSPEvent(guiActive = false, active = true)]
+        public void OnPartEngineConfigsChanged()
         {
             UpdateMaxThrust();
         }
@@ -603,13 +592,13 @@ namespace ProceduralParts
                 if (solidFuel != null)
                 {
                     float isp0 = Engine.atmosphereCurve.Evaluate(0);
-                    float minBurnTime = (float) Math.Ceiling(isp0*solidFuel.maxAmount*solidFuel.info.density*Engine.g/maxThrust);
+                    float minBurnTime = (float)Math.Ceiling(isp0 * solidFuel.maxAmount * solidFuel.info.density * Engine.g / maxThrust);
 
                     ((UI_FloatEdit)Fields["burnTimeME"].uiControlEditor).minValue = minBurnTime;
 
                     // Keep the thrust constant, change the current burn time to match
                     // Don't round the value, this stops it jumping around and won't matter that much
-                    burnTimeME = (float)(isp0 * solidFuel.maxAmount * solidFuel.info.density * Engine.g / thrust);   
+                    burnTimeME = (float)(isp0 * solidFuel.maxAmount * solidFuel.info.density * Engine.g / thrust);
                 }
             }
 
@@ -619,18 +608,18 @@ namespace ProceduralParts
         private void UpdateThrust(bool force = false)
         {
             // ReSharper disable CompareOfFloatsByEqualityOperator
-            if (!force && oldThrust == thrust && burnTimeME == oldBurnTimeME && oldBellDirection == bellDirection)
+            if (!force && oldThrust == thrust && burnTimeME == oldBurnTimeME && oldThrustDeflection == thrustDeflection)
                 return;
             // ReSharper restore CompareOfFloatsByEqualityOperator
 
             Vector3 oldAttach = selectedBell.srbAttach.position;
             UpdateThrustDependentCalcs();
             MoveBottomAttachmentAndNode(selectedBell.srbAttach.position - oldAttach);
-            
+
             oldThrust = thrust;
             oldBurnTimeME = burnTimeME;
 
-            if(HighLogic.LoadedSceneIsEditor)
+            if (HighLogic.LoadedSceneIsEditor)
                 GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
         }
 
@@ -641,7 +630,7 @@ namespace ProceduralParts
         {
             PartResource solidFuel = part.Resources["SolidFuel"];
 
-            if(solidFuel != null)
+            if (solidFuel != null)
             {
                 float _burnTime = (float)(solidFuel.amount / (fuelRate / solidFuel.info.density));
                 burnTime = string.Format("{0:F1}s", _burnTime);
@@ -656,7 +645,7 @@ namespace ProceduralParts
             if (solidFuel == null)
                 solidFuelMassG = UsingME ? 7.454 : 30.75;
             else
-                solidFuelMassG = solidFuel.amount*solidFuel.info.density*Engine.g;
+                solidFuelMassG = solidFuel.amount * solidFuel.info.density * Engine.g;
 
             FloatCurve atmosphereCurve = Engine.atmosphereCurve;
 
@@ -664,7 +653,7 @@ namespace ProceduralParts
             {
                 //float burnTime0 = burnTimeME = (float)(atmosphereCurve.Evaluate(0) * solidFuelMassG / thrust);
                 //float burnTime1 = (float)(atmosphereCurve.Evaluate(1) * solidFuelMassG / thrust);
-                
+
                 fuelRate = thrust / (atmosphereCurve.Evaluate(0f) * Engine.g);
                 if (solidFuel != null)
                 {
@@ -688,7 +677,7 @@ namespace ProceduralParts
 
                 thrustME = thrust0.ToStringSI(unit: "N", exponent: 3) + " Vac / " + thrust1.ToStringSI(unit: "N", exponent: 3) + " ASL";
                 srbISP = string.Format("{1:F0}s Vac / {0:F0}s ASL", atmosphereCurve.Evaluate(1), atmosphereCurve.Evaluate(0));
-                fuelRate = (float)solidFuelMassG / ( burnTimeME * Engine.g );
+                fuelRate = (float)solidFuelMassG / (burnTimeME * Engine.g);
             }
 
             // This equation is much easier. From StretchySRBs
@@ -712,7 +701,7 @@ namespace ProceduralParts
             Engine.maxThrust = thrust;
             //part.GetComponent<ModuleEngines>().maxFuelFlow = (float)(0.1*fuelRate);
             part.GetComponent<ModuleEngines>().maxFuelFlow = fuelRate;
-              
+
 
             selectedBell.model.transform.localScale = new Vector3(bellScale, bellScale, bellScale);
 
@@ -787,49 +776,9 @@ namespace ProceduralParts
                 num = 0f;
 
             Material mat = selectedBell.model.GetComponent<Renderer>().sharedMaterial;
-            mat.SetColor("_EmissiveColor", new Color(num*num, 0, 0));
+            mat.SetColor("_EmissiveColor", new Color(num * num, 0, 0));
         }
 
         #endregion
-
-
-        private List<GameObject> MyLines = new List<GameObject>();
-
-        private void ClearLines()
-        {
-            if (MyLines.Count > 0)
-            {
-                MyLines.ForEach(g => Destroy(g));
-                MyLines.Clear();
-                var lineRenders = GetComponents<LineRenderer>();
-                for (int i = 0; i < lineRenders.Length; i++)
-                {
-                    Destroy(lineRenders[i].gameObject);
-                }
-            }
-        }
-
-        private static Material LineMaterial;
-
-        private void DrawLine(Vector3 start, Vector3 end, Color color)
-        {
-            GameObject myLine = new GameObject();
-            myLine.transform.parent = transform;
-            //myLine.layer = 30;
-            LineRenderer lr = myLine.AddComponent<LineRenderer>();
-            lr.useWorldSpace = true;
-            lr.transform.localPosition = Vector3.zero;
-            lr.transform.localEulerAngles = Vector3.zero;
-
-            if (LineMaterial == null)
-                LineMaterial = new Material(Shader.Find("Particles/Additive"));
-            lr.material = LineMaterial;
-            lr.SetColors(color, color);
-            lr.SetWidth(0.025f, 0.025f);
-            lr.SetVertexCount(2);
-            lr.SetPosition(0, start);
-            lr.SetPosition(1, end);
-            MyLines.Add(myLine);
-        }
     }
 }

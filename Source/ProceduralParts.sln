@@ -2,6 +2,8 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2013
 VisualStudioVersion = 12.0.40629.0
+# Visual Studio 14
+VisualStudioVersion = 14.0.25123.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProceduralParts", "ProceduralParts.csproj", "{BB7C12FE-8189-4A56-B058-58C1B7366E60}"
 EndProject
@@ -10,10 +12,8 @@ EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
-		Debug|Mixed Platforms = Debug|Mixed Platforms
 		Debug|x86 = Debug|x86
 		Release|Any CPU = Release|Any CPU
-		Release|Mixed Platforms = Release|Mixed Platforms
 		Release|x86 = Release|x86
 		Test KSP|Any CPU = Test KSP|Any CPU
 		Test KSP|Mixed Platforms = Test KSP|Mixed Platforms
@@ -30,6 +30,9 @@ Global
 		{BB7C12FE-8189-4A56-B058-58C1B7366E60}.Release|Any CPU.Build.0 = Release|Any CPU
 		{BB7C12FE-8189-4A56-B058-58C1B7366E60}.Release|Mixed Platforms.ActiveCfg = Release|x86
 		{BB7C12FE-8189-4A56-B058-58C1B7366E60}.Release|Mixed Platforms.Build.0 = Release|x86
+		{BB7C12FE-8189-4A56-B058-58C1B7366E60}.Debug|x86.ActiveCfg = Debug|x86
+		{BB7C12FE-8189-4A56-B058-58C1B7366E60}.Debug|x86.Build.0 = Debug|x86
+		{BB7C12FE-8189-4A56-B058-58C1B7366E60}.Release|Any CPU.ActiveCfg = Release|x86
 		{BB7C12FE-8189-4A56-B058-58C1B7366E60}.Release|x86.ActiveCfg = Release|x86
 		{BB7C12FE-8189-4A56-B058-58C1B7366E60}.Release|x86.Build.0 = Release|x86
 		{BB7C12FE-8189-4A56-B058-58C1B7366E60}.Test KSP|Any CPU.ActiveCfg = Test KSP|Any CPU

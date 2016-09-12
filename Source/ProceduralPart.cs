@@ -142,7 +142,7 @@ namespace ProceduralParts
                 // delete the temporary collider, if there is one
                 Component.Destroy(tempCollider);
                 tempCollider = null;
-                Debug.Log("destroyed temporary collider");
+                //Debug.Log("destroyed temporary collider");
             }
 
             // Update internal state
@@ -1212,7 +1212,7 @@ namespace ProceduralParts
 			if (HighLogic.LoadedScene != GameScenes.EDITOR)
 				return;
 
-			Debug.Log ("PartChildAttached");
+			//Debug.Log ("PartChildAttached");
 
 			AttachNode node = child.findAttachNodeByPart(part);
 

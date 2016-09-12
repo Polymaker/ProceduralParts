@@ -145,6 +145,7 @@ namespace KSPAPIExtensions
 		/// </summary>
 		/// <param name="part">The part to find the original of</param>
 		/// <returns>The original part, or the part itself if it was the original part</returns>
+        [Obsolete("This don't seem to work with the current version of KSP", false)]
 		public static Part GetSymmetryCloneOriginal(this Part part)
 		{
 			if (!part.isClone || part.symmetryCounterparts == null || part.symmetryCounterparts.Count == 0)
@@ -160,10 +161,15 @@ namespace KSPAPIExtensions
 			return part;
 		}
 
-		/// <summary>
-		/// Find the relationship between two parts.
-		/// </summary>
-		public static PartRelationship RelationTo(this Part part, Part other)
+        public static bool IsSurfaceAttached(this Part part)
+        {
+            return part.srfAttachNode != null && part.srfAttachNode.attachedPart == part.parent;
+        }
+
+        /// <summary>
+        /// Find the relationship between two parts.
+        /// </summary>
+        public static PartRelationship RelationTo(this Part part, Part other)
 		{
 			if (other == null || part == null)
 				return PartRelationship.Unknown;
@@ -188,12 +194,7 @@ namespace KSPAPIExtensions
 				return PartRelationship.Vessel;
 			return PartRelationship.Unrelated;
 		}
-
-        public static bool IsSurfaceAttached(this Part part)
-        {
-            return part.srfAttachNode != null && part.srfAttachNode.attachedPart == part.parent;
-        }
-
+		
         //public static Part GetSymmetryParent(this Part part)
         //{
         //    if (part.parent == null || part.symmetryCounterparts.Count == 0)
