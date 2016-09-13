@@ -81,6 +81,8 @@ namespace ProceduralParts
             {
                 var extrudeProfile = GetSideSection(extrudeShape, diameter, (int)polySides, isInscribed);
 
+                RaiseChangeTextureScale("sides", PPart.SidesMaterial, new Vector2(extrudeProfile.Perimeter * 2f, length));
+
                 var extrudeMesh = MeshBuilder.CreateProceduralMesh(extrudeProfile, length);
 
                 Volume = extrudeMesh.Volume;

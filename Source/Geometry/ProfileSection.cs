@@ -41,6 +41,11 @@ namespace ProceduralParts.Geometry
             get { return _Height; }
         }
 
+        public Vector2 Size
+        {
+            get { return new Vector2(Width, Height); }
+        }
+
         public float Perimeter
         {
             get { return _Perimeter; }
@@ -157,8 +162,6 @@ namespace ProceduralParts.Geometry
         }
 
         #endregion
-
-        
 
         public static ProfileSection CreateSorted(params ProfilePoint[] points)
         {

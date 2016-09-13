@@ -130,8 +130,8 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>REM set kspPPPath=D:\Steam\SteamApps\common\Kerbal Space Program\GameData\ProceduralParts\
-set kspPPPath=D:\Games\Steam\steamapps\common\Kerbal Space Program\GameData\ProceduralParts\
+    <PostBuildEvent>set kspPPPath=D:\Steam\SteamApps\common\Kerbal Space Program\GameData\ProceduralParts\
+REM set kspPPPath=D:\Games\Steam\steamapps\common\Kerbal Space Program\GameData\ProceduralParts\
 
 IF "$(ConfigurationName)"  == "Test KSP" (
 	copy /Y "$(TargetPath)" "..\..\..\Plugins\"

@@ -125,7 +125,13 @@ namespace ProceduralParts
             var topSection = GetSideSection(topShape, topDiameter, (int)topPolySides, topIsInscribed);
             var bottomSection = GetSideSection(bottomShape, bottomDiameter, (int)bottomPolySides, bottomIsInscribed);
 
+            var texHorUV = Mathf.Max(topSection.Perimeter, bottomSection.Perimeter) * 2f;
+            var texVerUV = Mathf.Sqrt(Mathf.Pow(Mathf.Max(Mathf.Abs(topSection.Size.magnitude - bottomSection.Size.magnitude), 1f), 2) * (length * length));
+
+            RaiseChangeTextureScale("sides", PPart.SidesMaterial, new Vector2(texHorUV, texVerUV));
+
             var partMesh = MeshBuilder.CreateProceduralMesh(topSection, bottomSection, length, 3);
+
             Volume = partMesh.Volume;
 
             WriteMeshes(
@@ -152,11 +158,14 @@ namespace ProceduralParts
 
         private void CheckSnapMk2Diameter()
         {
+            bool diamChanged = false;
+
             if (oldBottomShape != bottomShape &&
                     bottomShape == "Mk2" &&
                     bottomDiameter == 1.25f)
             {
                 bottomDiameter = 1.5f;
+                diamChanged = true;
             }
 
             if (oldTopShape != topShape &&
@@ -164,6 +173,7 @@ namespace ProceduralParts
                 topDiameter == 1.25f)
             {
                 topDiameter = 1.5f;
+                diamChanged = true;
             }
             
         }
