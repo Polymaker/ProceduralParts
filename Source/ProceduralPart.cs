@@ -44,6 +44,7 @@ namespace ProceduralParts
             }
         }
         #endregion
+        
         #region Initialization
 
         public static bool installedFAR = false;
@@ -1579,7 +1580,7 @@ namespace ProceduralParts
         [KSPField(isPersistant=true)]
         public float moduleCost = 0f;
 
-        [KSPField(guiActiveEditor=true, guiName="cost")]
+        [KSPField(guiActiveEditor=true, guiName="Cost")]
         private string costDisplay = "";
 
         [KSPField]
@@ -1658,8 +1659,6 @@ namespace ProceduralParts
             }
             return moduleCost;
         }
-        
-        
         
         #endregion
 

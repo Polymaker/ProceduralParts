@@ -1,7 +1,7 @@
 ﻿using System;
 using UnityEngine;
 using System.Reflection;
-
+using System.Linq;
 namespace ProceduralParts
 {
 	public enum PartVolumes
@@ -303,6 +303,13 @@ namespace ProceduralParts
         }
 
         public abstract void UpdateTechConstraints();
+
+        protected void RefreshPartEditorWindow()
+        {
+            var window = FindObjectsOfType<UIPartActionWindow>().FirstOrDefault(w => w.part == part);
+            if (window != null)
+                window.displayDirty = true;
+        }
 
         private static Material LineMaterial;
 

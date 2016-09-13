@@ -53,60 +53,15 @@ namespace KSPAPIExtensions
 		Any = 0xFFFF
 	}
 
-    public static class PartModuleUtils
-    {
-        private static FieldInfo FieldListInfo;
-
-        public static void ReorderField(this PartModule module, BaseField field, int newIndex)
-        {
-            if (field == null)
-            {
-                Debug.Log("Field not found!");
-                return;
-            }
-
-            try
-            {
-                var fieldList = GetFieldList(module);
-                fieldList.Remove(field);
-
-                if (newIndex > fieldList.Count)
-                    fieldList.Add(field);
-                else
-                    fieldList.Insert(newIndex, field);
-            }
-            catch (Exception ex)
-            {
-                Debug.LogException(ex);
-                return;
-            }
-            Debug.Log(String.Format("Reordered field {0} to index {1}!!", field.name, newIndex));
-        }
-
-        private static List<BaseField> GetFieldList(PartModule module)
-        {
-            if (FieldListInfo == null)
-            {
-                FieldListInfo = typeof(BaseFieldList).GetField("_fields", BindingFlags.Instance | BindingFlags.NonPublic);
-            }
-
-            if (FieldListInfo != null)
-            {
-                return (List<BaseField>)FieldListInfo.GetValue(module.Fields);
-            }
-            return new List<BaseField>();
-        }
-    }
-
-
     public static class PartUtils
 	{
-		private static FieldInfo windowListField;
+		private static FieldInfo WindowListField;
+        private static FieldInfo ActionListField;
 
-		/// <summary>
-		/// Find the UIPartActionWindow for a part. Usually this is useful just to mark it as dirty.
-		/// </summary>
-		public static UIPartActionWindow FindActionWindow(this Part part)
+        /// <summary>
+        /// Find the UIPartActionWindow for a part. Usually this is useful just to mark it as dirty.
+        /// </summary>
+        public static UIPartActionWindow FindActionWindow(this Part part)
 		{
 			if (part == null)
 				return null;
@@ -116,29 +71,117 @@ namespace KSPAPIExtensions
 			UIPartActionController controller = UIPartActionController.Instance;
 			if (controller == null)
 				return null;
+            
 
-			if (windowListField == null)
+            if (WindowListField == null)
 			{
-				Type cntrType = typeof(UIPartActionController);
-				foreach (FieldInfo info in cntrType.GetFields(BindingFlags.Instance | BindingFlags.NonPublic))
-				{
-					if (info.FieldType == typeof(List<UIPartActionWindow>))
-					{
-						windowListField = info;
-						goto foundField;
-					}
-				}
+
+                WindowListField = typeof(UIPartActionController).GetFields(BindingFlags.Instance | BindingFlags.NonPublic)
+                    .FirstOrDefault(fi => fi.FieldType == typeof(List<UIPartActionWindow>));
+
+                if (WindowListField != null)
+                    goto foundField;
+
 				Debug.LogWarning("*PartUtils* Unable to find UIPartActionWindow list");
 				return null;
 			}
 			foundField:
 
-				List<UIPartActionWindow> uiPartActionWindows = (List<UIPartActionWindow>) windowListField.GetValue(controller);
+			List<UIPartActionWindow> uiPartActionWindows = (List<UIPartActionWindow>) WindowListField.GetValue(controller);
 			if (uiPartActionWindows == null)
 				return null;
 
 			return uiPartActionWindows.FirstOrDefault(window => window != null && window.part == part);
 		}
+
+        public static int GetFieldActionIndex(this Part part, BaseField field)
+        {
+            var actionList = GetPartWindowActions(part);
+
+            if (actionList == null || actionList.Count == 0)
+                return -1;
+            var fieldAction = actionList.OfType<UIPartActionFieldItem>().FirstOrDefault(fa => fa.Field == field);
+
+            if (fieldAction != null && fieldAction.isActiveAndEnabled)
+                return fieldAction.transform.GetSiblingIndex();
+
+            return -1;
+        }
+
+        public static bool SetFieldActionIndex(this Part part, BaseField field, int newIndex)
+        {
+            Debug.Log("PP** SetFieldActionIndex");
+            var actionList = GetPartWindowActions(part);
+
+            if (actionList == null || actionList.Count == 0)
+                return false;
+
+            try
+            {
+                var maxIndex = actionList.Where(pa => pa.transform != null && pa.IsItemValid()).Max(pa => pa.transform.GetSiblingIndex());
+                newIndex = Math.Min(maxIndex, newIndex);
+            }
+            catch { Debug.LogWarning("Problem with maxIndex"); }
+
+            var fieldAction = actionList.OfType<UIPartActionFieldItem>().FirstOrDefault(fa => fa.Field == field);
+
+            if (fieldAction == null || !fieldAction.isActiveAndEnabled)
+                return false;
+            
+            //fieldAction.transform.SetSiblingIndex(newIndex);
+            //fieldAction.Window.UpdateWindow();
+
+            return true;
+        }
+
+        public static bool SetFieldActionIndex(this Part part, string fieldName, int newIndex)
+        {
+            var field = part.Fields.FindField(fieldName);
+            if (field != null)
+                return SetFieldActionIndex(part, field, newIndex);
+            foreach (PartModule pMod in part.Modules)
+            {
+                field = pMod.Fields.FindField(fieldName);
+                if (field != null)
+                    return SetFieldActionIndex(part, field, newIndex);
+            }
+            Debug.LogWarning ("PP** SetFieldActionIndex Field not found " + fieldName);
+            return false;
+        }
+
+        private static BaseField FindField(this BaseFieldList list, string fieldName)
+        {
+            foreach (BaseField field in list)
+                if (field.name == fieldName)
+                    return field;
+            return null;
+        }
+
+        private static List<UIPartActionItem> GetPartWindowActions(Part part)
+        {
+            if (ActionListField == null)
+            {
+                ActionListField = typeof(UIPartActionWindow).GetFields(BindingFlags.Instance | BindingFlags.NonPublic)
+                    .FirstOrDefault(fi => fi.FieldType == typeof(List<UIPartActionItem>));
+
+                if (ActionListField == null)
+                {
+                    Debug.LogWarning("PP** Could not find Action List field in UIPartActionWindow");
+                    return new List<UIPartActionItem>();
+                }
+            }
+
+            var uiWindow = part.FindActionWindow();
+
+            if (uiWindow == null)
+            {
+                Debug.Log(string.Format("Part {0} UI Window is not created.", part.name));
+                return new List<UIPartActionItem>();
+            }
+
+            return (List<UIPartActionItem>)ActionListField.GetValue(uiWindow);
+        }
+
 
 		/// <summary>
 		/// If this part is a symmetry clone of another part, this method will return the original part.

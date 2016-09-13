@@ -211,6 +211,8 @@ namespace ProceduralParts
             oldFillet = fillet;
             // ReSharper restore CompareOfFloatsByEqualityOperator
 
+            RefreshPartEditorWindow();
+
             UpdateInterops();
         }
 

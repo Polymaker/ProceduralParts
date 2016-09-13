@@ -153,29 +153,28 @@ namespace ProceduralParts
             oldTopPolySides = topPolySides;
             oldTopShape = topShape;
 
+            RefreshPartEditorWindow();
+
             UpdateInterops();
         }
 
         private void CheckSnapMk2Diameter()
         {
-            bool diamChanged = false;
 
             if (oldBottomShape != bottomShape &&
                     bottomShape == "Mk2" &&
                     bottomDiameter == 1.25f)
             {
                 bottomDiameter = 1.5f;
-                diamChanged = true;
             }
-
+            
             if (oldTopShape != topShape &&
                 topShape == "Mk2" &&
                 topDiameter == 1.25f)
             {
                 topDiameter = 1.5f;
-                diamChanged = true;
             }
-            
+
         }
 
         public override void UpdateTechConstraints()

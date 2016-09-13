@@ -106,6 +106,8 @@ namespace ProceduralParts
             oldTopDiameter = topDiameter; oldBottomDiameter = bottomDiameter; oldLength = length;
             oldSelectedShape = selectedShape;
 
+            RefreshPartEditorWindow();
+
             UpdateInterops();
         }
 

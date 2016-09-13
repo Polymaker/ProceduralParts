@@ -47,11 +47,34 @@ namespace ProceduralParts
             if (!HighLogic.LoadedSceneIsEditor)
                 return;
 
+            //GameEvents.onPartActionUICreate.Add(OnPartCreateUI);
+
             UI_ChooseOption shapeEdit = (UI_ChooseOption)Fields["extrudeShape"].uiControlEditor;
             shapeEdit.options = ShapeNames;
             UpdateTechConstraints();
+            
+        }
 
-            this.ReorderField(Fields["costDisplay"], 10);
+        //public void OnDestroy()
+        //{
+        //    GameEvents.onPartActionUICreate.Remove(OnPartCreateUI);
+        //}
+
+        private void OnPartCreateUI(Part ePart)
+        {
+            if (ePart == part && part != null)
+            {
+                try
+                {
+                    if (isActiveAndEnabled)
+                        part.SetFieldActionIndex("costDisplay", 8);
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning("Error with SetFieldActionIndex");
+                    Debug.LogException(ex);
+                }
+            }
         }
 
         #region Shape
@@ -77,31 +100,28 @@ namespace ProceduralParts
                 new CircleSection(diameter, -0.5f * length, 0f, norm),
                 new CircleSection(diameter, 0.5f * length, 1f, norm)
                 );
-            try
-            {
-                var extrudeProfile = GetSideSection(extrudeShape, diameter, (int)polySides, isInscribed);
 
-                RaiseChangeTextureScale("sides", PPart.SidesMaterial, new Vector2(extrudeProfile.Perimeter * 2f, length));
+            var extrudeProfile = GetSideSection(extrudeShape, diameter, (int)polySides, isInscribed);
 
-                var extrudeMesh = MeshBuilder.CreateProceduralMesh(extrudeProfile, length);
+            RaiseChangeTextureScale("sides", PPart.SidesMaterial, new Vector2(extrudeProfile.Perimeter * 2f, length));
 
-                Volume = extrudeMesh.Volume;
+            var extrudeMesh = MeshBuilder.CreateProceduralMesh(extrudeProfile, length);
 
-                WriteMeshes(
-                    extrudeMesh.SidesMesh,
-                    extrudeMesh.CapsMesh,
-                    extrudeMesh.ColliderMesh
-                    );
-            }
-            catch (Exception ex)
-            {
-                Debug.LogException(ex);
-            }
+            Volume = extrudeMesh.Volume;
+
+            WriteMeshes(
+                extrudeMesh.SidesMesh,
+                extrudeMesh.CapsMesh,
+                extrudeMesh.ColliderMesh
+                );
+
             oldDiameter = diameter;
             oldLength = length;
             oldPolySides = polySides;
             oldIsInscribed = isInscribed;
             oldExtrudeShape = extrudeShape;
+
+            RefreshPartEditorWindow();
 
             UpdateInterops();
         }

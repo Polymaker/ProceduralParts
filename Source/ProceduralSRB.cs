@@ -62,7 +62,7 @@ namespace ProceduralParts
             {
                 InitializeBells();
                 UpdateMaxThrust();
-
+                
                 if (GameSceneFilter.AnyEditor.IsLoaded())
                     GameEvents.onEditorPartEvent.Add(OnEditorPartEvent);
             }
