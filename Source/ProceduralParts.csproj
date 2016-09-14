@@ -130,22 +130,8 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>set kspPPPath=D:\Steam\SteamApps\common\Kerbal Space Program\GameData\ProceduralParts\
-REM set kspPPPath=D:\Games\Steam\steamapps\common\Kerbal Space Program\GameData\ProceduralParts\
-
-IF "$(ConfigurationName)"  == "Test KSP" (
-	copy /Y "$(TargetPath)" "..\..\..\Plugins\"
-	cd ..\..\..
-	
-	for %25%25I in ("Plugins\*.dll") do (
-	echo "Copying " %25%25I
-	copy %25%25I "%25kspPPPath%25Plugins\"
-	)
-	REM cd Parts
-	REM for /R %25%25I in (*) do (
-	REM echo "Copying " %25%25I
-	REM copy %25%25I "%25kspPPPath%25Parts\"
-	REM )
+    <PostBuildEvent>IF "$(ConfigurationName)"  == "Test KSP" (
+ call "$(SolutionDir)CopyToKSP.bat" "$(TargetDir)"
 )</PostBuildEvent>
   </PropertyGroup>
   <PropertyGroup>
