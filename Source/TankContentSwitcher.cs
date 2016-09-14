@@ -490,11 +490,11 @@ namespace ProceduralParts
             {
                 if (keepAmount && selectedTankType.resources.Any(tr => tr.name == res.resourceName))
                     partResources.Add(res);
-                else
-                    Destroy(res);
+                //else
+                    //Destroy(res);
             }
-
-            part.Resources.list.Clear();
+            
+            part.Resources.dict.Clear();
 
             // Build them afresh. This way we don't need to do all the messing around with reflection
             // The downside is the UIPartActionWindow gets maked dirty and rebuit, so you can't use 
@@ -520,8 +520,8 @@ namespace ProceduralParts
                 part.AddResource(node);
             }
 
-            foreach (PartResource res in partResources)
-                Destroy(res);
+            //foreach (PartResource res in partResources)
+            //    Destroy(res);
 
             UIPartActionWindow window = part.FindActionWindow();
             if (window != null)
