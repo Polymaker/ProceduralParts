@@ -432,10 +432,10 @@ namespace ProceduralParts
                 SetBellRotation();
 
                 pPart.AddAttachment(bellTransform, true);
-
+                
                 // Move the bottom attach node into position.
                 // This needs to be done in flight mode too for the joints to work correctly
-                bottomAttachNode = part.findAttachNode(bottomAttachNodeName);
+                bottomAttachNode = part.FindAttachNode(bottomAttachNodeName);
                 Vector3 delta = selectedBell.srbAttach.position - selectedBell.model.position;
                 bottomAttachNode.originalPosition = bottomAttachNode.position += part.transform.InverseTransformDirection(delta);
 
