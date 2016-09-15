@@ -1163,6 +1163,7 @@ namespace ProceduralParts
                 return;
             }
 
+            Debug.Log(string.Format("OnPartAttachNodePositionChanged Part: {0} Node: {1}", node.owner.name, node.id));
             if (node.owner.GetComponent<ProceduralPart>() == null)
             {
                 foreach (FreePartAttachment attachment in childAttach)
@@ -1172,10 +1173,8 @@ namespace ProceduralParts
                         Vector3 position = node.owner.transform.TransformPoint(node.position);
                         shape.GetCylindricCoordinates(transform.InverseTransformPoint(position), attachment.Coordinates);
                     }
-
                 }
             }
-
         }
 
 		private void OnPartAttach(GameEvents.HostTargetAction<Part, Part> data)
@@ -1206,6 +1205,29 @@ namespace ProceduralParts
 			//	data.target.srfAttachNode.attachedPart = null;
 
 		}
+
+
+        [KSPAction("Debug attachments", KSPActionGroup.None)]
+        public void TraceAttachments()
+        {
+            Debug.Log(string.Format("PPart: {0} Attachments:", part.name));
+            Debug.Log("attachments (LinkedList<ModelAttachment>):");
+            foreach (var att in attachments)
+            {
+                Debug.Log(string.Format("child.name: {0}, data: {1}", att.child.name, att.data));
+            }
+            Debug.Log("childAttachments (LinkedList<PartAttachment>):");
+            foreach (var att in childAttachments)
+            {
+                Debug.Log(string.Format("child.name: {0} follower.name: {1}", att.child.name, att.follower));
+            }
+            Debug.Log("childAttach (LinkedList<FreePartAttachment>):");
+            foreach (var att in childAttach)
+            {
+                Debug.Log(string.Format("child.name: {0} AttachNode.id: {1} AttachNode.owner: {2}", 
+                    att.Child.name, att.AttachNode.id, att.AttachNode.owner));
+            }
+        }
 
         //[PartMessageListener(typeof(PartChildAttached), scenes: GameSceneFilter.AnyEditor)]
         public void PartChildAttached(Part child)

@@ -129,7 +129,9 @@
     <PostBuildEvent>IF "$(ConfigurationName)"  == "Test KSP" (
  call "$(SolutionDir)CopyToKSP.bat" "$(TargetDir)"
 )</PostBuildEvent>
-    <PostBuildEvent>REM C:\utils\pdb2mdb\pdb2mdb.exe ProceduralParts.dll</PostBuildEvent>
+    <PostBuildEvent>IF "$(ConfigurationName)"  == "Test KSP" (
+	call "$(SolutionDir)CopyToKSP.bat" "$(TargetDir)"
+)</PostBuildEvent>
   </PropertyGroup>
   <PropertyGroup>
     <PreBuildEvent>

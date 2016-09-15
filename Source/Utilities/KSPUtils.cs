@@ -305,7 +305,7 @@ namespace KSPAPIExtensions
         {
             if (part.parent == null)
                 return (AttachNode.NodeType)0;
-            var node = part.parent.findAttachNodeByPart(part);
+            var node = part.parent.FindAttachNodeByPart(part);
             if (node == null)
             {
                 Debug.Log("Part is not attached to parent?!");
