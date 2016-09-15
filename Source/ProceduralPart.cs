@@ -138,15 +138,9 @@ namespace ProceduralParts
 
         public override void OnInitialize()
         {
-            if (tempCollider != null)
-            {
-                // delete the temporary collider, if there is one
-                Component.Destroy(tempCollider);
-                tempCollider = null;
-                //Debug.Log("destroyed temporary collider");
-            }
-            Debug.Log("[ProceduralParts] OnInitialize");
-            // Update internal state
+            
+            //Debug.Log("[ProceduralParts] OnInitialize");
+
             try
             {
                 InitializeObjects();
@@ -169,11 +163,18 @@ namespace ProceduralParts
 
         public override void OnStart(StartState state)
         {
-            // Update internal state
-            Debug.Log("[ProceduralParts] OnStart");
+            //Debug.Log("[ProceduralParts] OnStart");
+
+            if (tempCollider != null)
+            {
+                // delete the temporary collider, if there is one
+                Destroy(tempCollider);
+                tempCollider = null;
+                //Debug.Log("destroyed temporary collider");
+            }
+            
             try
             {
-                
                 if (!HighLogic.LoadedSceneIsEditor)
                 {
                     // Force the first update, then disable.
@@ -199,13 +200,16 @@ namespace ProceduralParts
 
                 if (GameSceneFilter.AnyEditor.IsLoaded())
                     GameEvents.onEditorPartEvent.Add(OnEditorPartEvent);
+
                 BaseField fld = Fields["costDisplay"];
+
                 if (fld != null)
                     fld.guiActiveEditor = displayCost;
+
             }
             catch (Exception ex)
             {
-                Debug.LogError("[OnStart]: OnInitialize: caught exception.");
+                Debug.LogError("[ProceduralParts]: OnStart: caught exception.");
                 Debug.LogException(ex);
                 isEnabled = enabled = false;
             }
@@ -1105,7 +1109,7 @@ namespace ProceduralParts
 
 
         public void OnEditorPartEvent(ConstructionEventType type, Part part)
-        {        
+        {
             switch (type)
             {
                 case ConstructionEventType.PartRootSelected:
@@ -1113,23 +1117,23 @@ namespace ProceduralParts
                     //StartCoroutine(RebuildPartAttachments());
                     Part[] children = childAttach.Select<FreePartAttachment, Part>(x => x.Child).ToArray();
 
-                foreach (Part attachment in children)
-                {
-                    PartChildDetached(attachment);
-                }
+                    foreach (Part attachment in children)
+                    {
+                        PartChildDetached(attachment);
+                    }
 
-                foreach (Transform t in transform)
-                {
-                    Part child = t.GetComponent<Part>();
-                    if(child != null)
-                        PartChildAttached(child);
-                }
-                if (transform.parent == null)
-                    PartParentChanged(null);
-                else
-                    PartParentChanged(transform.parent.GetComponent<Part>());
+                    foreach (Transform t in transform)
+                    {
+                        Part child = t.GetComponent<Part>();
+                        if (child != null)
+                            PartChildAttached(child);
+                    }
+                    if (transform.parent == null)
+                        PartParentChanged(null);
+                    else
+                        PartParentChanged(transform.parent.GetComponent<Part>());
 
-                break;
+                    break;
 
                 case ConstructionEventType.PartOffset:
                     foreach (FreePartAttachment ca in childAttach)
@@ -1147,13 +1151,13 @@ namespace ProceduralParts
                             //RemovePartAttachment(pa);
                             //childAttachments.Remove(pa);
                             //PartChildAttached(part);
-                            
-                            
+
+
                             //break;
                         }
                     }
                     break;
-            }       
+            }
         }
 
         //[PartMessageListener(typeof(PartAttachNodePositionChanged), PartRelationship.Child, GameSceneFilter.AnyEditor)]
@@ -1164,10 +1168,11 @@ namespace ProceduralParts
 			//TODO resrict to child
 
 			AttachNode node = data.Get<AttachNode>("node");
-			//Vector3 location = data.Get("location");
-			//Vector3 orientation = data.Get("orientation");
-			//Vector3 secondaryAxis = data.Get("secondaryAxis");
+            //Vector3 location = data.Get("location");
+            //Vector3 orientation = data.Get("orientation");
+            //Vector3 secondaryAxis = data.Get("secondaryAxis");
 
+            Debug.Log(string.Format("OnPartAttachNodePositionChanged Part: {0} Node: {1}", node.owner.name, node.id));
 
             if(node == null)
             {
@@ -1679,7 +1684,6 @@ namespace ProceduralParts
         }
         #endregion
 
-       
         //[PartMessageListener(typeof(PartModelChanged), scenes: ~GameSceneFilter.Flight)]
         [KSPEvent(guiActive = false, active = true)]
 		public void OnPartModelChanged()

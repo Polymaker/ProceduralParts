@@ -1,5 +1,4 @@
 ﻿using KSPAPIExtensions;
-//using KSPAPIExtensions.PartMessage;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -38,12 +37,7 @@ namespace ProceduralParts
 		#endregion
 
         #region Callbacks
-        public override void OnAwake()
-        {
-            base.OnAwake();
-            //PartMessageService.Register(this);
-            //this.RegisterOnUpdateEditor(OnUpdateEditor);
-        }
+
 
         public void Update()
         {
@@ -105,15 +99,12 @@ namespace ProceduralParts
 
         public override void OnInitialize()
         {
-            base.OnInitialize();
             isInitialized = true;
-            Debug.LogWarning("TCS** OnInitialize");
+            
             InitializeTankType();
-            // ReSharper disable once CompareOfFloatsByEqualityOperator
+
             if (tankVolume != 0)
                 UpdateTankType(true);
-
-            
         }
 
         public void OnUpdateEditor()
