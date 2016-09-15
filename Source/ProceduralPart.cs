@@ -44,6 +44,7 @@ namespace ProceduralParts
             }
         }
         #endregion
+
         #region Initialization
 
         public static bool installedFAR = false;
@@ -123,6 +124,7 @@ namespace ProceduralParts
 
         public override string GetInfo()
         {
+            OnInitialize();
             OnStart(StartState.Editor);
 
             // Need to rescale everything to make it look good in the icon, but reenable otherwise OnStart won't get called again.
@@ -134,16 +136,16 @@ namespace ProceduralParts
         [SerializeField]
         private bool symmetryClone;
 
-        public override void OnStart(StartState state)
+        public override void OnInitialize()
         {
-            if(tempCollider!=null)
+            if (tempCollider != null)
             {
                 // delete the temporary collider, if there is one
                 Component.Destroy(tempCollider);
                 tempCollider = null;
                 //Debug.Log("destroyed temporary collider");
             }
-
+            Debug.Log("[ProceduralParts] OnInitialize");
             // Update internal state
             try
             {
@@ -153,9 +155,25 @@ namespace ProceduralParts
                     InitializeTechLimits();
 
                 InitializeShapes();
-                if(GameSceneFilter.AnyEditorOrFlight.IsLoaded())
+                if (GameSceneFilter.AnyEditorOrFlight.IsLoaded())
                     InitializeNodes();
 
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError("[ProceduralParts]: OnInitialize: caught exception.");
+                Debug.LogException(ex);
+                isEnabled = enabled = false;
+            }
+        }
+
+        public override void OnStart(StartState state)
+        {
+            // Update internal state
+            Debug.Log("[ProceduralParts] OnStart");
+            try
+            {
+                
                 if (!HighLogic.LoadedSceneIsEditor)
                 {
                     // Force the first update, then disable.
@@ -182,12 +200,12 @@ namespace ProceduralParts
                 if (GameSceneFilter.AnyEditor.IsLoaded())
                     GameEvents.onEditorPartEvent.Add(OnEditorPartEvent);
                 BaseField fld = Fields["costDisplay"];
-                if(fld != null)
+                if (fld != null)
                     fld.guiActiveEditor = displayCost;
             }
             catch (Exception ex)
             {
-                Debug.LogError("[ProceduralParts]: OnStart: caught exception.");
+                Debug.LogError("[OnStart]: OnInitialize: caught exception.");
                 Debug.LogException(ex);
                 isEnabled = enabled = false;
             }

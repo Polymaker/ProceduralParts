@@ -62,58 +62,39 @@ namespace KSPAPIExtensions
 		/// </summary>
 		public static UIPartActionWindow FindActionWindow(this Part part)
 		{
+            
 			if (part == null)
 				return null;
+            return Part.FindObjectsOfType<UIPartActionWindow>().FirstOrDefault(w => w.part == part);
+            //// We need to do quite a bit of piss-farting about with reflection to 
+            //// dig the thing out. We could just use Object.Find, but that requires hitting a heap more objects.
+            //UIPartActionController controller = UIPartActionController.Instance;
+            //if (controller == null)
+            //    return null;
 
-			// We need to do quite a bit of piss-farting about with reflection to 
-			// dig the thing out. We could just use Object.Find, but that requires hitting a heap more objects.
-			UIPartActionController controller = UIPartActionController.Instance;
-			if (controller == null)
-				return null;
+            //if (windowListField == null)
+            //{
+            //    Type cntrType = typeof(UIPartActionController);
+            //    foreach (FieldInfo info in cntrType.GetFields(BindingFlags.Instance | BindingFlags.NonPublic))
+            //    {
+            //        if (info.FieldType == typeof(List<UIPartActionWindow>))
+            //        {
+            //            windowListField = info;
+            //            goto foundField;
+            //        }
+            //    }
+            //    Debug.LogWarning("*PartUtils* Unable to find UIPartActionWindow list");
+            //    return null;
+            //}
+            //foundField:
 
-			if (windowListField == null)
-			{
-				Type cntrType = typeof(UIPartActionController);
-				foreach (FieldInfo info in cntrType.GetFields(BindingFlags.Instance | BindingFlags.NonPublic))
-				{
-					if (info.FieldType == typeof(List<UIPartActionWindow>))
-					{
-						windowListField = info;
-						goto foundField;
-					}
-				}
-				Debug.LogWarning("*PartUtils* Unable to find UIPartActionWindow list");
-				return null;
-			}
-			foundField:
+            //    List<UIPartActionWindow> uiPartActionWindows = (List<UIPartActionWindow>) windowListField.GetValue(controller);
+            //if (uiPartActionWindows == null)
+            //    return null;
 
-				List<UIPartActionWindow> uiPartActionWindows = (List<UIPartActionWindow>) windowListField.GetValue(controller);
-			if (uiPartActionWindows == null)
-				return null;
-
-			return uiPartActionWindows.FirstOrDefault(window => window != null && window.part == part);
+            //return uiPartActionWindows.FirstOrDefault(window => window != null && window.part == part);
 		}
 
-		/// <summary>
-		/// If this part is a symmetry clone of another part, this method will return the original part.
-		/// </summary>
-		/// <param name="part">The part to find the original of</param>
-		/// <returns>The original part, or the part itself if it was the original part</returns>
-        [Obsolete("This don't seem to work with the current version of KSP", false)]
-		public static Part GetSymmetryCloneOriginal(this Part part)
-		{
-			if (!part.isClone || part.symmetryCounterparts == null || part.symmetryCounterparts.Count == 0)
-				return part;
-
-			// Symmetry counterparts always are named xxxx(Clone) if they are cloned from xxxx. So the shortest name is the one.
-			int nameLength = part.transform.name.Length;
-			foreach (Part other in part.symmetryCounterparts)
-			{
-				if (other.transform.name.Length < nameLength)
-					return other;
-			}
-			return part;
-		}
 
         public static bool IsSurfaceAttached(this Part part)
         {
