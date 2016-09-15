@@ -468,7 +468,7 @@ namespace ProceduralParts
                 Quaternion rot = SideAttachOrientation(pv, pt, theta, out normal);
 
                 //Debug.LogWarning("Moving to orientation: normal: " + normal.ToString("F3") + " theta:" + (theta * 180f / Mathf.PI) + rot.ToStringAngleAxis());
-
+                
                 a.follower.transform.localRotation = rot;
                 a.follower.ForceUpdate();
             }

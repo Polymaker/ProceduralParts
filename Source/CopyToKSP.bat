@@ -9,11 +9,11 @@ IF [%1]==[] (
 	set buildDir="bin\Test KSP\"
 )
 
-xcopy %buildDir%*.dll "..\Plugins\" /C /D /Y /I
+xcopy %buildDir%*.dll* "..\Plugins\" /C /D /Y /I
 
 cd ..
 echo Copying Plugins dlls...
-xcopy Plugins\*.dll "%kspPPPath%Plugins\" /s /e /y /d
+xcopy Plugins\*.dll* "%kspPPPath%Plugins\" /s /e /y /d
 echo Copying Parts configs...
 xcopy Parts "%kspPPPath%Parts\" /s /e /y /d /i
 echo Copying ModuleManager patches...

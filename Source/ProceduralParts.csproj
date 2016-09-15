@@ -132,6 +132,10 @@
     <PostBuildEvent>IF "$(ConfigurationName)"  == "Test KSP" (
 	call "$(SolutionDir)CopyToKSP.bat" "$(TargetDir)"
 )</PostBuildEvent>
+    <PostBuildEvent>"D:\Development\ksp-plugins\pdb2mdb\pdb2mdb.exe" "$(TargetPath)"
+IF "$(ConfigurationName)"  == "Test KSP" (
+ call "$(SolutionDir)CopyToKSP.bat" "$(TargetDir)"
+)</PostBuildEvent>
   </PropertyGroup>
   <PropertyGroup>
     <PreBuildEvent>

@@ -437,9 +437,10 @@ namespace ProceduralParts.Geometry
             float theta = (Mathf.PI * 2f) / (float)sideCount;
             float halfT = theta / 2f;
             float radius = diameter / 2f;
+            var startAngle = -Mathf.PI / 2f;//-90°
             for (int s = 0; s < sideCount; s++)
             {
-                var curAngle = theta * s;
+                var curAngle = startAngle + (theta * s);
                 var norm = ProfilePoint.GetPoint(curAngle, 1f);
                 var pt1 = new ProfilePoint(ProfilePoint.GetPoint(curAngle - halfT, radius), norm);
                 var pt2 = new ProfilePoint(ProfilePoint.GetPoint(curAngle + halfT, radius), norm);

@@ -58,6 +58,8 @@ Global
 		{760BCCD3-0FB9-46D4-8B69-402EFE187506}.Test KSP|Mixed Platforms.Build.0 = Release|Any CPU
 		{760BCCD3-0FB9-46D4-8B69-402EFE187506}.Test KSP|x86.ActiveCfg = Release|Any CPU
 		{760BCCD3-0FB9-46D4-8B69-402EFE187506}.Test KSP|x86.Build.0 = Release|Any CPU
+		{BB7C12FE-8189-4A56-B058-58C1B7366E60}.Test KSP|x86.ActiveCfg = Test KSP|x86
+		{BB7C12FE-8189-4A56-B058-58C1B7366E60}.Test KSP|x86.Build.0 = Test KSP|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

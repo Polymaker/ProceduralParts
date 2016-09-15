@@ -55,27 +55,6 @@ namespace ProceduralParts
             
         }
 
-        //public void OnDestroy()
-        //{
-        //    GameEvents.onPartActionUICreate.Remove(OnPartCreateUI);
-        //}
-
-        private void OnPartCreateUI(Part ePart)
-        {
-            if (ePart == part && part != null)
-            {
-                try
-                {
-                    if (isActiveAndEnabled)
-                        part.SetFieldActionIndex("costDisplay", 8);
-                }
-                catch (Exception ex)
-                {
-                    Debug.LogWarning("Error with SetFieldActionIndex");
-                    Debug.LogException(ex);
-                }
-            }
-        }
 
         #region Shape
 
@@ -100,6 +79,21 @@ namespace ProceduralParts
                 new CircleSection(diameter, -0.5f * length, 0f, norm),
                 new CircleSection(diameter, 0.5f * length, 1f, norm)
                 );
+
+            if (extrudeShape == "Polygon")
+            {
+                var innerDiam = GetPolygonInnerDiam(isInscribed, diameter, (int)polySides);
+                part.srfAttachNode.position = new Vector3(0, 0, innerDiam / 2f);
+
+                //part.srfAttachNode.orientation = new Vector3(1, 0, 0);
+                Debug.LogWarning("**ProceduralShapeExtruded UpdateShape");
+                part.srfAttachNode.Trace();
+            }
+            else if(part.srfAttachNode.orientation.x == 1)
+            {
+                part.srfAttachNode.position = new Vector3(0, 0, diameter/2f);
+                part.srfAttachNode.orientation = new Vector3(0, 0, -1);
+            }
 
             var extrudeProfile = GetSideSection(extrudeShape, diameter, (int)polySides, isInscribed);
 
@@ -148,6 +142,14 @@ namespace ProceduralParts
                 return diam;
             float theta = (Mathf.PI * 2f) / (float)sides;
             return diam / Mathf.Cos(theta / 2f);
+        }
+
+        private static float GetPolygonInnerDiam(bool inscribed, float diam, int sides)
+        {
+            if (inscribed)
+                return diam;
+            float theta = (Mathf.PI * 2f) / (float)sides;
+            return diam * Mathf.Cos(theta / 2f);
         }
 
         #endregion

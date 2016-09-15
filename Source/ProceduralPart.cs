@@ -44,7 +44,7 @@ namespace ProceduralParts
             }
         }
         #endregion
-        
+
         #region Initialization
 
         public static bool installedFAR = false;
@@ -88,6 +88,7 @@ namespace ProceduralParts
         private Vector3 tempColliderSize;
 
         private BoxCollider tempCollider;
+        
         public override void OnLoad(ConfigNode node)
         {
             // Load stuff from config files
@@ -125,6 +126,7 @@ namespace ProceduralParts
 
         public override string GetInfo()
         {
+            OnInitialize();
             OnStart(StartState.Editor);
 
             // Need to rescale everything to make it look good in the icon, but reenable otherwise OnStart won't get called again.
@@ -136,14 +138,32 @@ namespace ProceduralParts
         [SerializeField]
         private bool symmetryClone;
 
+        private bool isInitialized;
+
+        public override void OnInitialize()
+        {
+            
+            Debug.Log("[ProceduralParts] OnInitialize");
+            if (!isInitialized)
+                DoInitialize();
+
+        }
+
         public override void OnStart(StartState state)
         {
-            if(tempCollider!=null)
+            Debug.Log("[ProceduralParts] OnStart");
+            if (!isInitialized)
+                DoInitialize();
+        }
+
+        private void DoInitialize()
+        {
+            if (tempCollider != null)
             {
                 // delete the temporary collider, if there is one
                 Component.Destroy(tempCollider);
                 tempCollider = null;
-                //Debug.Log("destroyed temporary collider");
+                Debug.Log("destroyed temporary collider");
             }
 
             // Update internal state
@@ -155,7 +175,7 @@ namespace ProceduralParts
                     InitializeTechLimits();
 
                 InitializeShapes();
-                if(GameSceneFilter.AnyEditorOrFlight.IsLoaded())
+                if (GameSceneFilter.AnyEditorOrFlight.IsLoaded())
                     InitializeNodes();
 
                 if (!HighLogic.LoadedSceneIsEditor)
@@ -184,15 +204,17 @@ namespace ProceduralParts
                 if (GameSceneFilter.AnyEditor.IsLoaded())
                     GameEvents.onEditorPartEvent.Add(OnEditorPartEvent);
                 BaseField fld = Fields["costDisplay"];
-                if(fld != null)
+                if (fld != null)
                     fld.guiActiveEditor = displayCost;
             }
             catch (Exception ex)
             {
-                Debug.LogError("[ProceduralParts]: OnStart: caught exception.");
+                Debug.LogError("[ProceduralParts]: DoInitialize: caught exception.");
                 Debug.LogException(ex);
                 isEnabled = enabled = false;
             }
+
+            isInitialized = true;
         }
 
         public void OnDestroy()
@@ -206,6 +228,9 @@ namespace ProceduralParts
 
         public void OnUpdateEditor()
         {
+            if (!isInitialized)
+                return;
+
             if (skipNextUpdate)
             {
                 skipNextUpdate = false;
@@ -223,6 +248,11 @@ namespace ProceduralParts
             {
                 Debug.LogException(ex);
                 isEnabled = enabled = false;
+            }
+            if (debugAttachs)
+            {
+                debugAttachs = false;
+                TraceAttachments();
             }
         }
 
@@ -952,7 +982,8 @@ namespace ProceduralParts
                 shape.ForceNextUpdate();
                 shape.OnUpdateEditor();
             }
-
+            nodeAttachments.Clear();
+            nodeOffsets.Clear();
             foreach (AttachNode node in part.attachNodes)
                 InitializeNode(node);
             if (part.attachRules.allowSrfAttach)
@@ -1085,9 +1116,8 @@ namespace ProceduralParts
 
         private Queue<Action> toAttach = new Queue<Action>();
 
-
         public void OnEditorPartEvent(ConstructionEventType type, Part part)
-        {        
+        {
             switch (type)
             {
                 case ConstructionEventType.PartRootSelected:
@@ -1095,23 +1125,23 @@ namespace ProceduralParts
                     //StartCoroutine(RebuildPartAttachments());
                     Part[] children = childAttach.Select<FreePartAttachment, Part>(x => x.Child).ToArray();
 
-                foreach (Part attachment in children)
-                {
-                    PartChildDetached(attachment);
-                }
+                    foreach (Part attachment in children)
+                    {
+                        PartChildDetached(attachment);
+                    }
 
-                foreach (Transform t in transform)
-                {
-                    Part child = t.GetComponent<Part>();
-                    if(child != null)
-                        PartChildAttached(child);
-                }
-                if (transform.parent == null)
-                    PartParentChanged(null);
-                else
-                    PartParentChanged(transform.parent.GetComponent<Part>());
+                    foreach (Transform t in transform)
+                    {
+                        Part child = t.GetComponent<Part>();
+                        if (child != null)
+                            PartChildAttached(child);
+                    }
+                    if (transform.parent == null)
+                        PartParentChanged(null);
+                    else
+                        PartParentChanged(transform.parent.GetComponent<Part>());
 
-                break;
+                    break;
 
                 case ConstructionEventType.PartOffset:
                     foreach (FreePartAttachment ca in childAttach)
@@ -1129,13 +1159,13 @@ namespace ProceduralParts
                             //RemovePartAttachment(pa);
                             //childAttachments.Remove(pa);
                             //PartChildAttached(part);
-                            
-                            
+
+
                             //break;
                         }
                     }
                     break;
-            }       
+            }
         }
 
         //[PartMessageListener(typeof(PartAttachNodePositionChanged), PartRelationship.Child, GameSceneFilter.AnyEditor)]
@@ -1146,10 +1176,11 @@ namespace ProceduralParts
 			//TODO resrict to child
 
 			AttachNode node = data.Get<AttachNode>("node");
-			//Vector3 location = data.Get("location");
-			//Vector3 orientation = data.Get("orientation");
-			//Vector3 secondaryAxis = data.Get("secondaryAxis");
+            //Vector3 location = data.Get("location");
+            //Vector3 orientation = data.Get("orientation");
+            //Vector3 secondaryAxis = data.Get("secondaryAxis");
 
+            Debug.Log(string.Format("OnPartAttachNodePositionChanged Part: {0} Node: {1}", node.owner.name, node.id));
 
             if(node == null)
             {
@@ -1163,7 +1194,10 @@ namespace ProceduralParts
                 return;
             }
 
-            Debug.Log(string.Format("OnPartAttachNodePositionChanged Part: {0} Node: {1}", node.owner.name, node.id));
+            Debug.LogWarning(string.Format("OnPartAttachNodePositionChanged Part: {0}({1}) Node: {2}", node.owner.name, node.owner.GetInstanceID(), node.id));
+            Debug.Log("position: " + node.position.ToString("G3"));
+            Debug.Log("orientation: " + node.orientation.ToString("G3"));
+            Debug.Log("offset: " + node.offset.ToString("G3"));
             if (node.owner.GetComponent<ProceduralPart>() == null)
             {
                 foreach (FreePartAttachment attachment in childAttach)
@@ -1205,12 +1239,17 @@ namespace ProceduralParts
 			//	data.target.srfAttachNode.attachedPart = null;
 
 		}
-
-
-        [KSPAction("Debug attachments", KSPActionGroup.None)]
+        
         public void TraceAttachments()
         {
-            Debug.Log(string.Format("PPart: {0} Attachments:", part.name));
+            Debug.LogWarning(string.Format("PPart: {0}({1}) Attachments:", part.name, part.GetInstanceID()));
+            Debug.Log("partModel.localPosition: " + partModel.localPosition);
+            Debug.Log("part.localPosition: " + part.transform.localPosition);
+            Debug.Log("srfAttachNode: ");
+            part.srfAttachNode.Trace();
+            Debug.Log("parentAttachment: ");
+            if(parentAttachment != null)
+                Debug.Log(string.Format("child.name: {0} follower.name: {1}", parentAttachment.child.name, parentAttachment.follower));
             Debug.Log("attachments (LinkedList<ModelAttachment>):");
             foreach (var att in attachments)
             {
@@ -1226,7 +1265,9 @@ namespace ProceduralParts
             {
                 Debug.Log(string.Format("child.name: {0} AttachNode.id: {1} AttachNode.owner: {2}", 
                     att.Child.name, att.AttachNode.id, att.AttachNode.owner));
+                att.AttachNode.Trace();
             }
+            
         }
 
         //[PartMessageListener(typeof(PartChildAttached), scenes: GameSceneFilter.AnyEditor)]
@@ -1388,10 +1429,11 @@ namespace ProceduralParts
             Func<Vector3> Offset;
             if (nodeOffsets.TryGetValue(childToParent.id, out Offset))
                 position -= Offset();
-
+            var pos2 = transform.InverseTransformPoint(position);
             Part root = EditorLogic.SortedShipList[0];
 
-            //Debug.LogWarning("Attaching: " + part + " to new parent: " + newParent + " node:" + childToParent.id + " position=" + childToParent.position.ToString("G3"));
+            Debug.LogWarning("Attaching: " + part + " to new parent: " + newParent + " node:" + childToParent.id + 
+                " position=" + childToParent.position.ToString("G3") + " pos2: " + pos2.ToString("G3"));
 
              //we need to delta this childAttachment down so that when the translation from the parent reaches here i ends in the right spot
             parentAttachment = AddPartAttachment(position, new ParentTransformable(root, part, childToParent));
@@ -1681,20 +1723,27 @@ namespace ProceduralParts
             }
             return moduleCost;
         }
-        
+
         #endregion
 
-       
+        [KSPField(isPersistant = false, guiActiveEditor = true, guiActive = false, guiName = "Debug attachments"),  UI_Toggle(affectSymCounterparts = UI_Scene.None)]
+        public bool debugAttachs;
+
+
         //[PartMessageListener(typeof(PartModelChanged), scenes: ~GameSceneFilter.Flight)]
         [KSPEvent(guiActive = false, active = true)]
 		public void OnPartModelChanged()
         {
-            //Debug.Log("Shape Changed");
+            Debug.Log("Shape Changed");
             foreach (FreePartAttachment ca in childAttach)
             {
                 Vector3 newPosition = shape.FromCylindricCoordinates(ca.Coordinates);
+                if (ca.AttachNode.id == "srfAttach")
+                {
+                    Debug.Log("Moving srfAttach to " + newPosition);
+                }
                 newPosition = transform.TransformPoint(newPosition);
-
+                
                 Vector3 oldPosition = ca.Child.transform.TransformPoint(ca.AttachNode.position);
 
                 Vector3 offset = newPosition - oldPosition;

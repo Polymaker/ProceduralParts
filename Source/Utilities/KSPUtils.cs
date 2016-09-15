@@ -55,154 +55,46 @@ namespace KSPAPIExtensions
 
     public static class PartUtils
 	{
-		private static FieldInfo WindowListField;
-        private static FieldInfo ActionListField;
-
-        /// <summary>
-        /// Find the UIPartActionWindow for a part. Usually this is useful just to mark it as dirty.
-        /// </summary>
-        public static UIPartActionWindow FindActionWindow(this Part part)
-		{
-			if (part == null)
-				return null;
-
-			// We need to do quite a bit of piss-farting about with reflection to 
-			// dig the thing out. We could just use Object.Find, but that requires hitting a heap more objects.
-			UIPartActionController controller = UIPartActionController.Instance;
-			if (controller == null)
-				return null;
-            
-
-            if (WindowListField == null)
-			{
-
-                WindowListField = typeof(UIPartActionController).GetFields(BindingFlags.Instance | BindingFlags.NonPublic)
-                    .FirstOrDefault(fi => fi.FieldType == typeof(List<UIPartActionWindow>));
-
-                if (WindowListField != null)
-                    goto foundField;
-
-				Debug.LogWarning("*PartUtils* Unable to find UIPartActionWindow list");
-				return null;
-			}
-			foundField:
-
-			List<UIPartActionWindow> uiPartActionWindows = (List<UIPartActionWindow>) WindowListField.GetValue(controller);
-			if (uiPartActionWindows == null)
-				return null;
-
-			return uiPartActionWindows.FirstOrDefault(window => window != null && window.part == part);
-		}
-
-        public static int GetFieldActionIndex(this Part part, BaseField field)
-        {
-            var actionList = GetPartWindowActions(part);
-
-            if (actionList == null || actionList.Count == 0)
-                return -1;
-            var fieldAction = actionList.OfType<UIPartActionFieldItem>().FirstOrDefault(fa => fa.Field == field);
-
-            if (fieldAction != null && fieldAction.isActiveAndEnabled)
-                return fieldAction.transform.GetSiblingIndex();
-
-            return -1;
-        }
-
-        public static bool SetFieldActionIndex(this Part part, BaseField field, int newIndex)
-        {
-            Debug.Log("PP** SetFieldActionIndex");
-            var actionList = GetPartWindowActions(part);
-
-            if (actionList == null || actionList.Count == 0)
-                return false;
-
-            try
-            {
-                var maxIndex = actionList.Where(pa => pa.transform != null && pa.IsItemValid()).Max(pa => pa.transform.GetSiblingIndex());
-                newIndex = Math.Min(maxIndex, newIndex);
-            }
-            catch { Debug.LogWarning("Problem with maxIndex"); }
-
-            var fieldAction = actionList.OfType<UIPartActionFieldItem>().FirstOrDefault(fa => fa.Field == field);
-
-            if (fieldAction == null || !fieldAction.isActiveAndEnabled)
-                return false;
-            
-            //fieldAction.transform.SetSiblingIndex(newIndex);
-            //fieldAction.Window.UpdateWindow();
-
-            return true;
-        }
-
-        public static bool SetFieldActionIndex(this Part part, string fieldName, int newIndex)
-        {
-            var field = part.Fields.FindField(fieldName);
-            if (field != null)
-                return SetFieldActionIndex(part, field, newIndex);
-            foreach (PartModule pMod in part.Modules)
-            {
-                field = pMod.Fields.FindField(fieldName);
-                if (field != null)
-                    return SetFieldActionIndex(part, field, newIndex);
-            }
-            Debug.LogWarning ("PP** SetFieldActionIndex Field not found " + fieldName);
-            return false;
-        }
-
-        private static BaseField FindField(this BaseFieldList list, string fieldName)
-        {
-            foreach (BaseField field in list)
-                if (field.name == fieldName)
-                    return field;
-            return null;
-        }
-
-        private static List<UIPartActionItem> GetPartWindowActions(Part part)
-        {
-            if (ActionListField == null)
-            {
-                ActionListField = typeof(UIPartActionWindow).GetFields(BindingFlags.Instance | BindingFlags.NonPublic)
-                    .FirstOrDefault(fi => fi.FieldType == typeof(List<UIPartActionItem>));
-
-                if (ActionListField == null)
-                {
-                    Debug.LogWarning("PP** Could not find Action List field in UIPartActionWindow");
-                    return new List<UIPartActionItem>();
-                }
-            }
-
-            var uiWindow = part.FindActionWindow();
-
-            if (uiWindow == null)
-            {
-                Debug.Log(string.Format("Part {0} UI Window is not created.", part.name));
-                return new List<UIPartActionItem>();
-            }
-
-            return (List<UIPartActionItem>)ActionListField.GetValue(uiWindow);
-        }
-
+		private static FieldInfo windowListField;
 
 		/// <summary>
-		/// If this part is a symmetry clone of another part, this method will return the original part.
+		/// Find the UIPartActionWindow for a part. Usually this is useful just to mark it as dirty.
 		/// </summary>
-		/// <param name="part">The part to find the original of</param>
-		/// <returns>The original part, or the part itself if it was the original part</returns>
-        [Obsolete("This don't seem to work with the current version of KSP", false)]
-		public static Part GetSymmetryCloneOriginal(this Part part)
+		public static UIPartActionWindow FindActionWindow(this Part part)
 		{
-			if (!part.isClone || part.symmetryCounterparts == null || part.symmetryCounterparts.Count == 0)
-				return part;
+            
+			if (part == null)
+				return null;
+            return Part.FindObjectsOfType<UIPartActionWindow>().FirstOrDefault(w => w.part == part);
+            //// We need to do quite a bit of piss-farting about with reflection to 
+            //// dig the thing out. We could just use Object.Find, but that requires hitting a heap more objects.
+            //UIPartActionController controller = UIPartActionController.Instance;
+            //if (controller == null)
+            //    return null;
 
-			// Symmetry counterparts always are named xxxx(Clone) if they are cloned from xxxx. So the shortest name is the one.
-			int nameLength = part.transform.name.Length;
-			foreach (Part other in part.symmetryCounterparts)
-			{
-				if (other.transform.name.Length < nameLength)
-					return other;
-			}
-			return part;
+            //if (windowListField == null)
+            //{
+            //    Type cntrType = typeof(UIPartActionController);
+            //    foreach (FieldInfo info in cntrType.GetFields(BindingFlags.Instance | BindingFlags.NonPublic))
+            //    {
+            //        if (info.FieldType == typeof(List<UIPartActionWindow>))
+            //        {
+            //            windowListField = info;
+            //            goto foundField;
+            //        }
+            //    }
+            //    Debug.LogWarning("*PartUtils* Unable to find UIPartActionWindow list");
+            //    return null;
+            //}
+            //foundField:
+
+            //    List<UIPartActionWindow> uiPartActionWindows = (List<UIPartActionWindow>) windowListField.GetValue(controller);
+            //if (uiPartActionWindows == null)
+            //    return null;
+
+            //return uiPartActionWindows.FirstOrDefault(window => window != null && window.part == part);
 		}
+
 
         public static bool IsSurfaceAttached(this Part part)
         {
@@ -237,81 +129,6 @@ namespace KSPAPIExtensions
 				return PartRelationship.Vessel;
 			return PartRelationship.Unrelated;
 		}
-		
-        //public static Part GetSymmetryParent(this Part part)
-        //{
-        //    if (part.parent == null || part.symmetryCounterparts.Count == 0)
-        //        return null;
-        //    Part curParent = part;
-        //    var symCount = part.symmetryCounterparts.Count;
-        //    do
-        //    {
-        //        bool isSurfAttached = curParent.srfAttachNode.attachedPart == curParent.parent;
-        //        if (isSurfAttached)
-        //            return curParent.parent;
-        //        else if (curParent.symmetryCounterparts.Count == 0 || curParent.symmetryCounterparts.Count != symCount)
-        //            return curParent;
-        //    }
-        //    while ((curParent = curParent.parent) != null);
-            
-        //    return null;
-        //}
-
-        //public static IEnumerable<Part> GetChildsToPart(this Part parent, Part part)
-        //{
-        //    Part curParent = part.parent;
-        //    if (parent == part || curParent == null)
-        //        return new Part[0];
-        //    var partList = new List<Part>();
-        //    do
-        //    {
-        //        partList.Add(curParent);
-        //        if (curParent.parent == parent)
-        //        {
-        //            partList.Reverse();
-        //            return partList;
-        //        }
-        //    }
-        //    while ((curParent = curParent.parent) != null);
-        //    return new Part[0];
-        //}
-
-        //public static Part GetSymmetryStackTop(this Part part)
-        //{
-        //    if (part.parent == null)
-        //        return part;
-        //    Part curPart = part;
-        //    var symCount = part.symmetryCounterparts.Count;
-        //    do
-        //    {
-        //        if (curPart.IsSurfaceAttached() || curPart.parent == null)
-        //            return curPart;
-
-        //        if (curPart.parent.symmetryCounterparts.Count == 0 ||
-        //            curPart.parent.symmetryCounterparts.Count != symCount)
-        //            return curPart;
-        //        if (curPart.symmetryCounterparts.All(s => s.parent == curPart.parent))//stack attached to the same multi-coupler
-        //        {
-        //            Debug.Log("Part is attached to multi-coupler");
-        //            return curPart;
-        //        }
-        //    }
-        //    while ((curPart = curPart.parent) != null);
-
-        //    return null;
-        //}
-
-        public static AttachNode.NodeType GetAttachType(this Part part)
-        {
-            if (part.parent == null)
-                return (AttachNode.NodeType)0;
-            var node = part.parent.FindAttachNodeByPart(part);
-            if (node == null)
-            {
-                Debug.Log("Part is not attached to parent?!");
-            }
-            return node.nodeType;
-        }
 
 		/// <summary>
 		/// Test if two parts are related by a set of criteria. Because PartRelationship is a flags
@@ -375,6 +192,18 @@ namespace KSPAPIExtensions
 		{
 			return (int)(filter & HighLogic.LoadedScene.AsFilter()) != 0;
 		}
+
+        public static void Trace(this AttachNode node)
+        {
+            Debug.LogWarning(string.Format("Part {0}({1}) attach node {2}", node.owner.name, node.owner.GetInstanceID(), node.id));
+            Debug.Log("position: " + node.position.ToString("G3"));
+            Debug.Log("orientation: " + node.orientation.ToString("G3"));
+            Debug.Log("offset: " + node.offset.ToString("G3"));
+            if (node.attachedPart != null)
+                Debug.Log(string.Format("Attached to: {0}({1})", node.owner.name, node.owner.GetInstanceID()));
+            else
+                Debug.Log("Not attached");
+        }
 
 		/// <summary>
 		/// Register an 'OnUpdate' method for use in the editor.
@@ -506,7 +335,6 @@ namespace KSPAPIExtensions
 			return startup.GetHashCode() ^ once.GetHashCode() ^ type.GetHashCode();
 			// ReSharper restore NonReadonlyFieldInGetHashCode
 		}
-	}
-
+	} 
 }
 
