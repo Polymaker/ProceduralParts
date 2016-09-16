@@ -115,8 +115,6 @@ namespace ProceduralParts
             CheckEditors();
             CheckSnapMk2Diameter();
 
-            
-
             var topSection = GetSideSection(topShape, topDiameter, (int)topPolySides, topIsInscribed);
             var bottomSection = GetSideSection(bottomShape, bottomDiameter, (int)bottomPolySides, bottomIsInscribed);
 

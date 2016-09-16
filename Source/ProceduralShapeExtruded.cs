@@ -112,8 +112,11 @@ namespace ProceduralParts
             {
                 if (lastProfile != null)
                 {
-                    var point = lastProfile.InterpolateByUV(coords.u);
-                    return new Vector3(point.Position.x, coords.y, point.Position.y);
+                    if (coords.HeightMode == ShapeCoordinates.YMode.OFFSET_FROM_SHAPE_CENTER && coords.RadiusMode == ShapeCoordinates.RMode.OFFSET_FROM_SHAPE_CENTER)
+                    {
+                        var point = lastProfile.InterpolateByUV(coords.u);
+                        return new Vector3(point.Position.x, coords.y, point.Position.y);
+                    }
                 }
             }
             catch (Exception ex)

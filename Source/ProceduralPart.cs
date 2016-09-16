@@ -978,8 +978,8 @@ namespace ProceduralParts
                 shape.ForceNextUpdate();
                 shape.OnUpdateEditor();
             }
-            nodeAttachments.Clear();
-            nodeOffsets.Clear();
+            //nodeAttachments.Clear();
+            //nodeOffsets.Clear();
 
             foreach (AttachNode node in part.attachNodes)
                 InitializeNode(node);
