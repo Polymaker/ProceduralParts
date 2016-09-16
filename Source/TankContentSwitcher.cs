@@ -84,6 +84,9 @@ namespace ProceduralParts
 
         public override void OnStart(StartState state)
         {
+            if (!isInitialized)
+                DoInitialize();
+
             if (HighLogic.LoadedSceneIsFlight)
             {
                 if (tankVolumeName != null)
@@ -99,8 +102,14 @@ namespace ProceduralParts
 
         public override void OnInitialize()
         {
+            if (!isInitialized)
+                DoInitialize();
+        }
+
+        private void DoInitialize()
+        {
             isInitialized = true;
-            
+
             InitializeTankType();
 
             if (tankVolume != 0)
@@ -109,6 +118,8 @@ namespace ProceduralParts
 
         public void OnUpdateEditor()
         {
+            if (!isInitialized)
+                return;
             UpdateTankType();
         }
 

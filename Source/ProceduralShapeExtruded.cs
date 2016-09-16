@@ -58,6 +58,8 @@ namespace ProceduralParts
 
         #region Shape
 
+        private ProfileSection lastProfile;
+
         protected override void UpdateShape(bool force)
         {
             //DebugMeshNormals(SidesMesh, Color.green);
@@ -73,34 +75,18 @@ namespace ProceduralParts
             CheckEditors();
             CheckSnapMk2Diameter();
 
-            Vector2 norm = new Vector2(1, 0);
+            lastProfile = GetSideSection(extrudeShape, diameter, (int)polySides, isInscribed);
 
+            Vector2 norm = new Vector2(1, 0);
             UpdateMeshNodesSizes(
                 new CircleSection(diameter, -0.5f * length, 0f, norm),
                 new CircleSection(diameter, 0.5f * length, 1f, norm)
                 );
 
-            if (extrudeShape == "Polygon")
-            {
-                var innerDiam = GetPolygonInnerDiam(isInscribed, diameter, (int)polySides);
-                part.srfAttachNode.position = new Vector3(0, 0, innerDiam / 2f);
+            RaiseChangeTextureScale("sides", PPart.SidesMaterial, new Vector2(lastProfile.Perimeter * 2f, length));
 
-                //part.srfAttachNode.orientation = new Vector3(1, 0, 0);
-                Debug.LogWarning("**ProceduralShapeExtruded UpdateShape");
-                part.srfAttachNode.Trace();
-            }
-            else if(part.srfAttachNode.orientation.x == 1)
-            {
-                part.srfAttachNode.position = new Vector3(0, 0, diameter/2f);
-                part.srfAttachNode.orientation = new Vector3(0, 0, -1);
-            }
-
-            var extrudeProfile = GetSideSection(extrudeShape, diameter, (int)polySides, isInscribed);
-
-            RaiseChangeTextureScale("sides", PPart.SidesMaterial, new Vector2(extrudeProfile.Perimeter * 2f, length));
-
-            var extrudeMesh = MeshBuilder.CreateProceduralMesh(extrudeProfile, length);
-
+            var extrudeMesh = MeshBuilder.CreateProceduralMesh(lastProfile, length);
+            
             Volume = extrudeMesh.Volume;
 
             WriteMeshes(
@@ -118,6 +104,24 @@ namespace ProceduralParts
             RefreshPartEditorWindow();
 
             UpdateInterops();
+        }
+
+        public override Vector3 FromCylindricCoordinates(ProceduralAbstractShape.ShapeCoordinates coords)
+        {
+            try
+            {
+                if (lastProfile != null)
+                {
+                    var point = lastProfile.InterpolateByUV(coords.u);
+                    return new Vector3(point.Position.x, coords.y, point.Position.y);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[ProceduralParts] FromCylindricCoordinates");
+                Debug.LogException(ex);
+            }
+            return base.FromCylindricCoordinates(coords);
         }
 
         private ProfileSection GetSideSection(string shapeName, float diam, int sideCount, bool inscribed)

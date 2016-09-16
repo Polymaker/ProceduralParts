@@ -168,5 +168,10 @@ namespace ProceduralParts.Geometry
                 return p2.Clone();
             return new ProfilePoint(Vector2.Lerp(p1.Position, p2.Position, t), VectorUtils.SlerpNormal(p1.Normal, p2.Normal, t));
         }
+
+        public bool IsCloseTo(ProfilePoint other)
+        {
+            return Position.IsCloseTo(other.Position) && Normal.IsCloseTo(other.Normal);
+        }
     }
 }

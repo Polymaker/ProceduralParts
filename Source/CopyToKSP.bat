@@ -1,5 +1,5 @@
-REM set kspPPPath=D:\Steam\SteamApps\common\Kerbal Space Program\GameData\ProceduralParts\
-set kspPPPath=D:\Games\Steam\steamapps\common\Kerbal Space Program\GameData\ProceduralParts\
+set kspPPPath=D:\Steam\SteamApps\common\Kerbal Space Program\GameData\ProceduralParts\
+REM set kspPPPath=D:\Games\Steam\steamapps\common\Kerbal Space Program\GameData\ProceduralParts\
 set buildDir=%1
 echo %1
 cd %~dp0

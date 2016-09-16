@@ -285,6 +285,25 @@ namespace ProceduralParts
             public float y;
             public float r;
 
+            /// <summary>
+            /// Initializes a new instance of the <see cref="ShapeCoordinates"/> class.
+            /// </summary>
+            public ShapeCoordinates()
+            {
+                u = 0f;
+                y = 0f;
+                r = 0f;
+            }
+
+            public ShapeCoordinates(RMode radiusMode, YMode heightMode, float u, float y, float r)
+            {
+                RadiusMode = radiusMode;
+                HeightMode = heightMode;
+                this.u = u;
+                this.y = y;
+                this.r = r;
+            }
+
             public override string ToString()
             {
                 return "(u: " + u + " y: " + y + " r: " + r + ") R: " +RadiusMode + "Y: " + HeightMode;

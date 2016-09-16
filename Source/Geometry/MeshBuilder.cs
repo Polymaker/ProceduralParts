@@ -28,6 +28,7 @@ namespace ProceduralParts.Geometry
             if (botAdapter.PointCount != topAdapter.PointCount)
             {
                 Debug.Log("Failed to created adapter, sides does not have same number of vertices");
+                
                 return null;
             }
 

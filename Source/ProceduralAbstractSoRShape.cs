@@ -460,9 +460,16 @@ namespace ProceduralParts
                 float x = Mathf.Cos(theta) * r;
                 float z = -Mathf.Sin(theta) * r;
 
-                Vector3 pos = new Vector3(x, y, z);
-                //print("Moving attachment:" + a + " to:" + pos.ToString("F3"));
-                a.follower.transform.localPosition = pos;
+                var attPos = new Vector3(x, y, z);
+
+                if (this is ProceduralShapeExtruded)
+                {
+                    attPos = FromCylindricCoordinates(new ShapeCoordinates(ShapeCoordinates.RMode.OFFSET_FROM_SHAPE_CENTER, ShapeCoordinates.YMode.OFFSET_FROM_SHAPE_CENTER, a.uv[0], y, r));
+                }
+
+                //print("Moving attachment:" + a + " to:" + attPos.ToString("F3"));
+
+                a.follower.transform.localPosition = attPos;
 
                 Vector3 normal;
                 Quaternion rot = SideAttachOrientation(pv, pt, theta, out normal);

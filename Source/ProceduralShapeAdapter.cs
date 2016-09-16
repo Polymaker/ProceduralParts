@@ -115,6 +115,11 @@ namespace ProceduralParts
             CheckEditors();
             CheckSnapMk2Diameter();
 
+            
+
+            var topSection = GetSideSection(topShape, topDiameter, (int)topPolySides, topIsInscribed);
+            var bottomSection = GetSideSection(bottomShape, bottomDiameter, (int)bottomPolySides, bottomIsInscribed);
+
             Vector2 norm = new Vector2(length, (bottomDiameter - topDiameter) / 2f).normalized;
 
             UpdateMeshNodesSizes(
@@ -122,24 +127,22 @@ namespace ProceduralParts
                 new CircleSection(topDiameter, 0.5f * length, 1f, norm)
                 );
 
-            var topSection = GetSideSection(topShape, topDiameter, (int)topPolySides, topIsInscribed);
-            var bottomSection = GetSideSection(bottomShape, bottomDiameter, (int)bottomPolySides, bottomIsInscribed);
-
             var texHorUV = Mathf.Max(topSection.Perimeter, bottomSection.Perimeter) * 2f;
             var texVerUV = Mathf.Sqrt(Mathf.Pow(Mathf.Max(Mathf.Abs(topSection.Size.magnitude - bottomSection.Size.magnitude), 1f), 2) * (length * length));
 
             RaiseChangeTextureScale("sides", PPart.SidesMaterial, new Vector2(texHorUV, texVerUV));
 
             var partMesh = MeshBuilder.CreateProceduralMesh(topSection, bottomSection, length, 3);
+            if (partMesh != null)
+            {
+                Volume = partMesh.Volume;
 
-            Volume = partMesh.Volume;
-
-            WriteMeshes(
-                partMesh.SidesMesh,
-                partMesh.CapsMesh,
-                partMesh.ColliderMesh
-                );
-
+                WriteMeshes(
+                    partMesh.SidesMesh,
+                    partMesh.CapsMesh,
+                    partMesh.ColliderMesh
+                    );
+            }
             //DebugMeshNormals(SidesMesh, Color.red);
             //DebugMeshTangents(SidesMesh, Color.blue);
 

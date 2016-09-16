@@ -57,16 +57,6 @@ namespace ProceduralParts
                 return;
             }
 
-            //var pPart = transform.GetComponent<ProceduralPart>();
-            //if (pPart != null)
-            //{
-            //    Debug.LogWarning("[ProceduralParts] Tranforming PPart");
-            //    if (pPart.CurrentShape != null && pPart.CurrentShape is ProceduralShapeExtruded)
-            //    {
-            //        var extrudeShape = (ProceduralShapeExtruded)pPart.CurrentShape;
-
-            //    }
-            //}
             DoTranslation();
 
             DoRotation();
@@ -221,16 +211,6 @@ namespace ProceduralParts
 
             override public void Translate(Vector3 translation)
             {
-                var pPart = transform.GetComponent<ProceduralPart>();
-                if (pPart != null)
-                {
-                    Debug.LogWarning("[ProceduralParts] Tranforming PPart");
-                    if (pPart.CurrentShape != null && pPart.CurrentShape is ProceduralShapeExtruded)
-                    {
-                        var extrudeShape = (ProceduralShapeExtruded)pPart.CurrentShape;
-
-                    }
-                }
                 transform.Translate(translation, Space.World);
             }
 

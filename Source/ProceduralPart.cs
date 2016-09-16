@@ -138,7 +138,7 @@ namespace ProceduralParts
         [SerializeField]
         private bool symmetryClone;
 
-        private bool isInitialized;
+        internal bool isInitialized;
 
         public override void OnInitialize()
         {
@@ -249,11 +249,7 @@ namespace ProceduralParts
                 Debug.LogException(ex);
                 isEnabled = enabled = false;
             }
-            if (debugAttachs)
-            {
-                debugAttachs = false;
-                TraceAttachments();
-            }
+
         }
 
         private bool skipNextUpdate;
@@ -984,6 +980,7 @@ namespace ProceduralParts
             }
             nodeAttachments.Clear();
             nodeOffsets.Clear();
+
             foreach (AttachNode node in part.attachNodes)
                 InitializeNode(node);
             if (part.attachRules.allowSrfAttach)
@@ -1180,7 +1177,7 @@ namespace ProceduralParts
             //Vector3 orientation = data.Get("orientation");
             //Vector3 secondaryAxis = data.Get("secondaryAxis");
 
-            Debug.Log(string.Format("OnPartAttachNodePositionChanged Part: {0} Node: {1}", node.owner.name, node.id));
+            //Debug.Log(string.Format("OnPartAttachNodePositionChanged Part: {0} Node: {1}", node.owner.name, node.id));
 
             if(node == null)
             {
@@ -1194,10 +1191,10 @@ namespace ProceduralParts
                 return;
             }
 
-            Debug.LogWarning(string.Format("OnPartAttachNodePositionChanged Part: {0}({1}) Node: {2}", node.owner.name, node.owner.GetInstanceID(), node.id));
-            Debug.Log("position: " + node.position.ToString("G3"));
-            Debug.Log("orientation: " + node.orientation.ToString("G3"));
-            Debug.Log("offset: " + node.offset.ToString("G3"));
+            //Debug.LogWarning(string.Format("OnPartAttachNodePositionChanged Part: {0}({1}) Node: {2}", node.owner.name, node.owner.GetInstanceID(), node.id));
+            //Debug.Log("position: " + node.position.ToString("G3"));
+            //Debug.Log("orientation: " + node.orientation.ToString("G3"));
+            //Debug.Log("offset: " + node.offset.ToString("G3"));
             if (node.owner.GetComponent<ProceduralPart>() == null)
             {
                 foreach (FreePartAttachment attachment in childAttach)
@@ -1240,35 +1237,35 @@ namespace ProceduralParts
 
 		}
         
-        public void TraceAttachments()
-        {
-            Debug.LogWarning(string.Format("PPart: {0}({1}) Attachments:", part.name, part.GetInstanceID()));
-            Debug.Log("partModel.localPosition: " + partModel.localPosition);
-            Debug.Log("part.localPosition: " + part.transform.localPosition);
-            Debug.Log("srfAttachNode: ");
-            part.srfAttachNode.Trace();
-            Debug.Log("parentAttachment: ");
-            if(parentAttachment != null)
-                Debug.Log(string.Format("child.name: {0} follower.name: {1}", parentAttachment.child.name, parentAttachment.follower));
-            Debug.Log("attachments (LinkedList<ModelAttachment>):");
-            foreach (var att in attachments)
-            {
-                Debug.Log(string.Format("child.name: {0}, data: {1}", att.child.name, att.data));
-            }
-            Debug.Log("childAttachments (LinkedList<PartAttachment>):");
-            foreach (var att in childAttachments)
-            {
-                Debug.Log(string.Format("child.name: {0} follower.name: {1}", att.child.name, att.follower));
-            }
-            Debug.Log("childAttach (LinkedList<FreePartAttachment>):");
-            foreach (var att in childAttach)
-            {
-                Debug.Log(string.Format("child.name: {0} AttachNode.id: {1} AttachNode.owner: {2}", 
-                    att.Child.name, att.AttachNode.id, att.AttachNode.owner));
-                att.AttachNode.Trace();
-            }
+        //public void TraceAttachments()
+        //{
+        //    Debug.LogWarning(string.Format("PPart: {0}({1}) Attachments:", part.name, part.GetInstanceID()));
+        //    Debug.Log("partModel.localPosition: " + partModel.localPosition);
+        //    Debug.Log("part.localPosition: " + part.transform.localPosition);
+        //    Debug.Log("srfAttachNode: ");
+        //    part.srfAttachNode.Trace();
+        //    Debug.Log("parentAttachment: ");
+        //    if(parentAttachment != null)
+        //        Debug.Log(string.Format("child.name: {0} follower.name: {1}", parentAttachment.child.name, parentAttachment.follower));
+        //    Debug.Log("attachments (LinkedList<ModelAttachment>):");
+        //    foreach (var att in attachments)
+        //    {
+        //        Debug.Log(string.Format("child.name: {0}, data: {1}", att.child.name, att.data));
+        //    }
+        //    Debug.Log("childAttachments (LinkedList<PartAttachment>):");
+        //    foreach (var att in childAttachments)
+        //    {
+        //        Debug.Log(string.Format("child.name: {0} follower.name: {1}", att.child.name, att.follower));
+        //    }
+        //    Debug.Log("childAttach (LinkedList<FreePartAttachment>):");
+        //    foreach (var att in childAttach)
+        //    {
+        //        Debug.Log(string.Format("child.name: {0} AttachNode.id: {1} AttachNode.owner: {2}", 
+        //            att.Child.name, att.AttachNode.id, att.AttachNode.owner));
+        //        att.AttachNode.Trace();
+        //    }
             
-        }
+        //}
 
         //[PartMessageListener(typeof(PartChildAttached), scenes: GameSceneFilter.AnyEditor)]
         public void PartChildAttached(Part child)
@@ -1429,11 +1426,11 @@ namespace ProceduralParts
             Func<Vector3> Offset;
             if (nodeOffsets.TryGetValue(childToParent.id, out Offset))
                 position -= Offset();
-            var pos2 = transform.InverseTransformPoint(position);
+
             Part root = EditorLogic.SortedShipList[0];
 
-            Debug.LogWarning("Attaching: " + part + " to new parent: " + newParent + " node:" + childToParent.id + 
-                " position=" + childToParent.position.ToString("G3") + " pos2: " + pos2.ToString("G3"));
+            //Debug.LogWarning("Attaching: " + part + " to new parent: " + newParent + " node:" + childToParent.id + 
+            //    " position=" + childToParent.position.ToString("G3"));
 
              //we need to delta this childAttachment down so that when the translation from the parent reaches here i ends in the right spot
             parentAttachment = AddPartAttachment(position, new ParentTransformable(root, part, childToParent));
@@ -1726,15 +1723,12 @@ namespace ProceduralParts
 
         #endregion
 
-        [KSPField(isPersistant = false, guiActiveEditor = true, guiActive = false, guiName = "Debug attachments"),  UI_Toggle(affectSymCounterparts = UI_Scene.None)]
-        public bool debugAttachs;
-
 
         //[PartMessageListener(typeof(PartModelChanged), scenes: ~GameSceneFilter.Flight)]
         [KSPEvent(guiActive = false, active = true)]
 		public void OnPartModelChanged()
         {
-            Debug.Log("Shape Changed");
+            //Debug.Log("Shape Changed");
             foreach (FreePartAttachment ca in childAttach)
             {
                 Vector3 newPosition = shape.FromCylindricCoordinates(ca.Coordinates);
