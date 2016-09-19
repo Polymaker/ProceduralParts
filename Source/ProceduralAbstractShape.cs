@@ -3,6 +3,7 @@ using UnityEngine;
 using System.Reflection;
 using System.Linq;
 using KSPAPIExtensions;
+using System.Collections.Generic;
 
 namespace ProceduralParts
 {
@@ -237,19 +238,77 @@ namespace ProceduralParts
 
         private void FixEditorIconScale()
         {
-
-            var meshBounds = PPart.SidesIconMesh.bounds;
-
-            var nozzleTransform = part.partInfo.iconPrefab.transform.FindDecendant("srbNozzle");
-            MeshFilter nozzleMeshFilter = null;
-            if (nozzleTransform != null && nozzleTransform.GetComponentCached(ref nozzleMeshFilter) != null && nozzleMeshFilter.mesh != null)
-                meshBounds.Encapsulate(nozzleMeshFilter.mesh.bounds);
-
+            var meshBounds = CalculateBounds(part.partInfo.iconPrefab.gameObject);
+            if (meshBounds.extents == Vector3.zero)
+                meshBounds = PPart.SidesIconMesh.bounds;
             var maxSize = Mathf.Max(meshBounds.size.x, meshBounds.size.y, meshBounds.size.z);
+
             float factor = (40f / maxSize) / 40f;
 
             part.partInfo.iconScale = 1f / maxSize;
-            part.partInfo.iconPrefab.transform.GetChild(0).transform.localScale = Vector3.one * factor;
+            var iconMainTrans = part.partInfo.iconPrefab.transform.GetChild(0).transform;
+
+            iconMainTrans.localScale *= factor;
+            iconMainTrans.localPosition -= meshBounds.center;
+        }
+
+
+        //Code from PartIconFixer addon
+        private static Bounds CalculateBounds(GameObject go)
+        {
+            var renderers = go.GetComponentsInChildren<Renderer>(true).ToList();
+
+            if (renderers.Count == 0) return default(Bounds);
+
+            var boundsList = new List<Bounds>();
+
+            renderers.ForEach(r =>
+            {
+                // why wouldn't it be enabled? not necessarily a problem though
+
+                if (r is SkinnedMeshRenderer)
+                {
+                    var smr = r as SkinnedMeshRenderer;
+
+                    // the localBounds of the SkinnedMeshRenderer are initially large enough
+                    // to accomodate all animation frames; they're likely to be far off for 
+                    // parts that do a lot of animation-related movement (like solar panels expanding)
+                    //
+                    // We can get correct mesh bounds by baking the current animation into a mesh
+                    // note: vertex positions in baked mesh are relative to smr.transform; any scaling
+                    // is already baked in
+                    Mesh mesh = new Mesh();
+                    smr.BakeMesh(mesh);
+
+                    // while the mesh bounds will now be correct, they don't consider orientation at all.
+                    // If a long part is oriented along the wrong axis in world space, the bounds we'd get
+                    // here could be very wrong. We need to come up with essentially the renderer bounds:
+                    // a bounding box in world space that encompasses the mesh
+                    Matrix4x4 m = Matrix4x4.TRS(smr.transform.position, smr.transform.rotation, Vector3.one
+                        /* remember scale already factored in!*/);
+                    var vertices = mesh.vertices;
+
+                    Bounds smrBounds = new Bounds(m.MultiplyPoint3x4(vertices[0]), Vector3.zero);
+
+                    for (int i = 1; i < vertices.Length; ++i)
+                        smrBounds.Encapsulate(m.MultiplyPoint3x4(vertices[i]));
+
+                    Destroy(mesh);
+
+                    boundsList.Add(smrBounds);
+                }
+                else if (r is MeshRenderer) // note: there are ParticleRenderers, LineRenderers, and TrailRenderers
+                {
+                    r.gameObject.GetComponent<MeshFilter>().sharedMesh.RecalculateBounds();
+                    boundsList.Add(r.bounds);
+                }
+            });
+
+
+            Bounds bounds = boundsList[0];
+            boundsList.Skip(1).ToList().ForEach(b => bounds.Encapsulate(b));
+
+            return bounds;
         }
 
         /// <summary>

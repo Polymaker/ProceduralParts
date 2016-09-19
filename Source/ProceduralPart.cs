@@ -862,7 +862,7 @@ namespace ProceduralParts
                     // pt is no longer specular ever, just diffuse.
                     if (endsMaterial != null)
                         endsMaterial.shader = Shader.Find("KSP/Diffuse");
- 
+
                 }
             }
 
