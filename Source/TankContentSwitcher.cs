@@ -38,6 +38,14 @@ namespace ProceduralParts
 
         #region Callbacks
 
+        private bool isInitialized;
+        
+        public override void OnAwake()
+        {
+            base.OnAwake();
+            //PartMessageService.Register(this);
+            //this.RegisterOnUpdateEditor(OnUpdateEditor);
+        }
 
         public void Update()
         {
@@ -80,13 +88,21 @@ namespace ProceduralParts
             node.SetValue("isEnabled", "True");
         }
 
-        private bool isInitialized = false;
+        public override void OnInitialize()
+        {
+            if (!isInitialized)
+                DoInitialize();
+        }
 
         public override void OnStart(StartState state)
         {
             if (!isInitialized)
                 DoInitialize();
+        }
 
+        private void DoInitialize()
+        {
+            isInitialized = true;
             if (HighLogic.LoadedSceneIsFlight)
             {
                 if (tankVolumeName != null)
@@ -96,30 +112,19 @@ namespace ProceduralParts
                 isEnabled = enabled = false;
                 return;
             }
-            
-            isEnabled = enabled = HighLogic.LoadedSceneIsEditor;
-        }
-
-        public override void OnInitialize()
-        {
-            if (!isInitialized)
-                DoInitialize();
-        }
-
-        private void DoInitialize()
-        {
-            isInitialized = true;
 
             InitializeTankType();
-
+            // ReSharper disable once CompareOfFloatsByEqualityOperator
             if (tankVolume != 0)
                 UpdateTankType(true);
+            isEnabled = enabled = HighLogic.LoadedSceneIsEditor;
         }
 
         public void OnUpdateEditor()
         {
             if (!isInitialized)
                 return;
+
             UpdateTankType();
         }
 
@@ -300,7 +305,7 @@ namespace ProceduralParts
 
         private void UpdateTankType(bool init = false)
         {
-            if (tankTypeOptions == null || ( selectedTankType != null && selectedTankType.name == tankType) || !isInitialized)
+            if (tankTypeOptions == null || ( selectedTankType != null && selectedTankType.name == tankType))
                 return;
 
             TankTypeOption oldTankType = selectedTankType;
@@ -330,7 +335,7 @@ namespace ProceduralParts
                 Fields["volumeDisplay"].guiActiveEditor = false;
             else
 				Fields["volumeDisplay"].guiActiveEditor = tankVolumeName != null;
-            
+
             UpdateMassAndResources(true, init);
             if (HighLogic.LoadedSceneIsEditor)
                 GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
@@ -380,9 +385,6 @@ namespace ProceduralParts
 
         private void UpdateMassAndResources(bool typeChanged, bool keepAmount = false) // keep amount when rebuild (for saved part loading)
         {
-            if (!isInitialized)
-                return;
-
             // Wait for the first update...
             if (selectedTankType == null)
                 return;
@@ -391,7 +393,7 @@ namespace ProceduralParts
             {
                 mass = selectedTankType.dryDensity * tankVolume + selectedTankType.massConstant;
 
-                if (PPart != null && PPart.CurrentShape != null)
+                if (PPart != null)
                     mass *= PPart.CurrentShape.massMultiplier;
 
                 MassChanged(mass);
@@ -418,6 +420,7 @@ namespace ProceduralParts
 		[KSPEvent(guiActive = false, active = true)]
 		public void OnPartResourceInitialAmountChanged(BaseEventData data)
         {
+
 
 			if (!GameSceneFilter.AnyEditor.IsLoaded ())
 				return;
@@ -534,9 +537,6 @@ namespace ProceduralParts
                 node.AddValue("isTweakable", res.isTweakable);
                 part.AddResource(node);
             }
-
-            //foreach (PartResource res in partResources)
-            //    Destroy(res);
 
             UIPartActionWindow window = part.FindActionWindow();
             if (window != null)

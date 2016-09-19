@@ -717,9 +717,9 @@ namespace ProceduralParts
 
             // set the texture scale.
             RaiseChangeTextureScale("sides", PPart.SidesMaterial, new Vector2(tankULength, tankVLength));
-            
 
-            if(HighLogic.LoadedScene == GameScenes.LOADING)
+
+            if (HighLogic.LoadedScene == GameScenes.LOADING)
                 m.WriteTo(PPart.SidesIconMesh);
             else
                 m.WriteTo(SidesMesh);

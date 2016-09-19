@@ -59,6 +59,16 @@ namespace ProceduralParts.Geometry
 
         #endregion
 
+        [Flags]
+        public enum InitializeFlag
+        {
+            Initialized = 0,
+            Sort = 1,
+            Order = 2,
+            CalculateUVs = 4,
+            InitializeAll = Sort | Order | CalculateUVs
+        }
+
         #region Ctors
 
         private ProfileSection(ProfilePoint[] points, bool sorted)
@@ -76,23 +86,32 @@ namespace ProceduralParts.Geometry
             FixRadialUVs();
         }
 
-        public ProfileSection(params ProfilePoint[] points)
+        private ProfileSection(ProfilePoint[] points, InitializeFlag initflags)
         {
             if (points.Length == 0)
                 throw new Exception("Cannot create section with no points");
             _Points = points;
-
+            
             CalculateBounds();
 
-            InitializePoints();
+            InitializePoints(initflags);
 
             CalculateTopUVs();
 
             FixRadialUVs();
         }
 
+        public ProfileSection(params ProfilePoint[] points)
+            :this(points, InitializeFlag.InitializeAll)
+        {
+
+        }
+
         public ProfileSection(IEnumerable<ProfilePoint> points)
             : this(points.ToArray()) { }
+
+        public ProfileSection(IEnumerable<ProfilePoint> points, InitializeFlag initflags)
+            : this(points.ToArray(), initflags) { }
 
         #endregion
 
@@ -106,40 +125,56 @@ namespace ProceduralParts.Geometry
             _Height = Mathf.Abs(max.y - min.y);
         }
 
-        private void InitializePoints()
+        private void InitializePoints(InitializeFlag initFlags = InitializeFlag.InitializeAll)
         {
-            if (!sortedAndOrdered)
+            if (initFlags.HasFlag(InitializeFlag.Sort))
+                _Points = SortProfilePoints(_Points);
+
+            if (initFlags != InitializeFlag.Initialized && 
+                !_Points.Any(p => Mathf.Approximately(p.RadialUV, 0f)))
             {
-                //ensure that we have a point at 0° to preserve texture alignment
-                if (!_Points.Any(p => Mathf.Approximately(p.RadialUV, 0f)))
+                var pointList = _Points.ToList();
+                int newPtIdx = 0;
+                var pointAtZero = InterpolateByUV(0f, out newPtIdx);
+                if (pointAtZero.RadialUV != 0)
                 {
-                    var pointList = _Points.ToList();
-                    var pointAtZero = InterpolateByUV(0f);
-                    if (pointAtZero.RadialUV != 0)
-                    {
-                        pointAtZero.Position = new Vector2(pointAtZero.Position.x, 0f);
-                        pointAtZero.CalculateAngles();
-                    }
-                    pointList.Add(pointAtZero);
-                    _Points = SortProfilePoints(pointList);
+                    pointAtZero.Position = new Vector2(pointAtZero.Position.x, 0f);
+                    pointAtZero.CalculateAngles();
                 }
-                _Points = OrderProfilePoints(_Points);
+
+                if (newPtIdx < pointList.Count)
+                    pointList.Insert(newPtIdx, pointAtZero);
+                else
+                    pointList.Insert(0, pointAtZero);
+
+                _Points = pointList.ToArray();
+
+                initFlags |= InitializeFlag.Order;
             }
+
+            if (initFlags.HasFlag(InitializeFlag.Order))
+                _Points = OrderProfilePoints(_Points);
+
+            bool calculateUvs = initFlags.HasFlag(InitializeFlag.CalculateUVs);
 
             for (int i = 0; i < _Points.Length; i++)
             {
                 _Points[i].Init(this, i);
                 var curPoint = _Points[i];
-                curPoint.SideUV = _Perimeter;
+                if (calculateUvs)
+                    curPoint.SideUV = _Perimeter;
                 _Perimeter += (curPoint.Next.Position - curPoint.Position).magnitude;
                 _SurfaceArea += GetSurfaceArea(curPoint);
             }
 
-            for (int i = 0; i < _Points.Length; i++)
-                _Points[i].SideUV = Mathf.Clamp(_Points[i].SideUV / _Perimeter, 0f, 1f);
+            if (calculateUvs)
+            {
+                for (int i = 0; i < _Points.Length; i++)
+                    _Points[i].SideUV = Mathf.Clamp(_Points[i].SideUV / _Perimeter, 0f, 1f);
 
-            _Points[0].SideUV = 0f;
-            _Points[PointCount - 1].SideUV = 1f;
+                _Points[0].SideUV = 0f;
+                _Points[PointCount - 1].SideUV = 1f;
+            }
         }
 
         private void CalculateTopUVs()
@@ -191,17 +226,26 @@ namespace ProceduralParts.Geometry
         internal static ProfilePoint[] SortProfilePoints(IEnumerable<ProfilePoint> points)
         {
             var orderedPoints = points.OrderBy(p => p.NormRadialUV).ToList();
-
+            //todo: check for concave shape (eg: star)
             return orderedPoints.ToArray();
         }
 
+        /// <summary>
+        /// Ensure that the first and last points overlaps and that they are at angle 0°, so every profile side UV matches-up
+        /// </summary>
+        /// <param name="points"></param>
+        /// <returns></returns>
         internal static ProfilePoint[] OrderProfilePoints(IEnumerable<ProfilePoint> points)
         {
             var orderedPoints = points.ToList();
-            var pointAtZero = orderedPoints/*.OrderBy(p => p.NormRadialUV)*/.First(p => Mathf.Approximately(p.RadialUV, 0));
+
+            var pointAtZero = orderedPoints.First(p => Mathf.Approximately(p.RadialUV, 0));
+
             var foundIdx = orderedPoints.IndexOf(pointAtZero);
             if (orderedPoints.Count(p => Mathf.Approximately(p.RadialUV, 0)) == 1)
-                orderedPoints.Add(pointAtZero.Clone());
+            {
+                orderedPoints.Insert(foundIdx, pointAtZero.Clone());
+            }
             if(orderedPoints.First().RadialUV != 0 || !orderedPoints.First().Position.IsCloseTo(orderedPoints.Last().Position))
             {
                 var endPoints = orderedPoints.Take(foundIdx + 1).ToArray();
@@ -222,10 +266,19 @@ namespace ProceduralParts.Geometry
 
         public ProfilePoint InterpolateByUV(float uv)
         {
+            int dummy = 0;
+            return InterpolateByUV(uv, out dummy);
+        }
+
+        public ProfilePoint InterpolateByUV(float uv, out int insertIdx)
+        {
+            insertIdx = -1;
             for (int i = 0; i < PointCount; i++)
             {
+                insertIdx = i + 1;
+
                 var pt1 = Points[i];
-                var pt2 = pt1.Next ?? Points[(i+1) % PointCount];
+                var pt2 = pt1.Next ?? Points[(i + 1) % PointCount];
 
                 var curUV = pt1.RadialUV;
                 var nextUV = pt2.RadialUV;
@@ -251,6 +304,7 @@ namespace ProceduralParts.Geometry
                     return ProfilePoint.Slerp(pt1, pt2, delta);
                 }
             }
+            
             return null;
         }
 
@@ -349,63 +403,71 @@ namespace ProceduralParts.Geometry
 
         #region Hard coded Profiles
 
-        public static ProfileSection Mk2Profile = CreateSorted(
-            new ProfilePoint(0.000f, -0.750f, 0f, -1f),
-            new ProfilePoint(-0.190f, -0.730f, -0.231f, -0.973f),
-            new ProfilePoint(-0.375f, -0.660f, -0.430f, -0.903f),
-            new ProfilePoint(-0.775f, -0.427f, -0.504f, -0.864f),
-            new ProfilePoint(-1.250f, -0.150f, -0.504f, -0.864f),
-            new ProfilePoint(-1.250f, -0.150f, -1.000f, 0.000f),
-            new ProfilePoint(-1.250f, 0.150f, -1.000f, 0.000f),
-            new ProfilePoint(-1.250f, 0.150f, -0.504f, 0.864f),
-            new ProfilePoint(-0.775f, 0.427f, -0.504f, 0.864f),
-            new ProfilePoint(-0.375f, 0.660f, -0.430f, 0.903f),
-            new ProfilePoint(-0.190f, 0.730f, -0.231f, 0.973f),
-            new ProfilePoint(0.000f, 0.750f, 0f, 1f),
-            new ProfilePoint(0.190f, 0.730f, 0.231f, 0.973f),
-            new ProfilePoint(0.375f, 0.660f, 0.430f, 0.903f),
-            new ProfilePoint(0.775f, 0.427f, 0.504f, 0.864f),
-            new ProfilePoint(1.250f, 0.150f, 0.504f, 0.864f),
-            new ProfilePoint(1.250f, 0.150f, 1.000f, 0.000f),
-            new ProfilePoint(1.250f, -0.150f, 1.000f, 0.000f),
-            new ProfilePoint(1.250f, -0.150f, 0.504f, -0.864f),
-            new ProfilePoint(0.775f, -0.427f, 0.504f, -0.864f),
-            new ProfilePoint(0.375f, -0.660f, 0.430f, -0.903f),
-            new ProfilePoint(0.190f, -0.730f, 0.231f, -0.973f),
-            new ProfilePoint(0.000f, -0.750f, 0f, -1f));
+        public static ProfileSection Mk2Profile = new ProfileSection(
+            new ProfilePoint[]
+            {
+                new ProfilePoint(1.25f, 0f, 1f, 0f, 0f),
+                new ProfilePoint(1.25f, -0.15f, 1f, 0f, 0.0242f),
+                new ProfilePoint(1.25f, -0.15f, 0.504f, -0.864f, 0.0242f),
+                new ProfilePoint(0.775f, -0.427f, 0.504f, -0.864f, 0.1128f),
+                new ProfilePoint(0.375f, -0.66f, 0.43f, -0.903f, 0.1873f),
+                new ProfilePoint(0.19f, -0.73f, 0.231f, -0.973f, 0.2192f),
+                new ProfilePoint(0f, -0.75f, 0f, -1f, 0.25f),
+                new ProfilePoint(-0.19f, -0.73f, -0.231f, -0.973f, 0.2808f),
+                new ProfilePoint(-0.375f, -0.66f, -0.43f, -0.903f, 0.3127f),
+                new ProfilePoint(-0.775f, -0.427f, -0.504f, -0.864f, 0.3872f),
+                new ProfilePoint(-1.25f, -0.15f, -0.504f, -0.864f, 0.4758f),
+                new ProfilePoint(-1.25f, -0.15f, -1f, 0f, 0.4758f),
+                new ProfilePoint(-1.25f, 0.15f, -1f, 0f, 0.5242f),
+                new ProfilePoint(-1.25f, 0.15f, -0.504f, 0.864f, 0.5242f),
+                new ProfilePoint(-0.775f, 0.427f, -0.504f, 0.864f, 0.6128f),
+                new ProfilePoint(-0.375f, 0.66f, -0.43f, 0.903f, 0.6873f),
+                new ProfilePoint(-0.19f, 0.73f, -0.231f, 0.973f, 0.7192f),
+                new ProfilePoint(0f, 0.75f, 0f, 1f, 0.75f),
+                new ProfilePoint(0.19f, 0.73f, 0.231f, 0.973f, 0.7808f),
+                new ProfilePoint(0.375f, 0.66f, 0.43f, 0.903f, 0.8127f),
+                new ProfilePoint(0.775f, 0.427f, 0.504f, 0.864f, 0.8872f),
+                new ProfilePoint(1.25f, 0.15f, 0.504f, 0.864f, 0.9758f),
+                new ProfilePoint(1.25f, 0.15f, 1f, 0f, 0.9758f),
+                new ProfilePoint(1.25f, 0f, 1f, 0f, 1f)
+            }, InitializeFlag.Initialized);
 
-        public static ProfileSection Mk3Profile = CreateSorted(
-            new ProfilePoint(0.000f, -1.875f, 0f, -1f),
-            new ProfilePoint(0.485f, -1.811f, 0.259f, -0.966f),
-            new ProfilePoint(0.938f, -1.624f, 0.500f, -0.866f),
-            new ProfilePoint(1.326f, -1.326f, 0.609f, -0.793f),
-            new ProfilePoint(1.326f, -1.326f, 0.793f, -0.609f),
-            new ProfilePoint(1.624f, -0.938f, 0.793f, -0.609f),
-            new ProfilePoint(1.624f, -0.938f, 1.000f, 0.000f),
-            new ProfilePoint(1.624f, -0.900f, 1.000f, 0.000f),
-            new ProfilePoint(1.624f, 0.900f, 1.000f, 0.000f),
-            new ProfilePoint(1.624f, 0.937f, 1.000f, 0.000f),
-            new ProfilePoint(1.624f, 0.937f, 0.793f, 0.609f),
-            new ProfilePoint(1.326f, 1.326f, 0.793f, 0.609f),
-            new ProfilePoint(1.326f, 1.326f, 0.609f, 0.793f),
-            new ProfilePoint(0.938f, 1.624f, 0.500f, 0.866f),
-            new ProfilePoint(0.485f, 1.811f, 0.259f, 0.966f),
-            new ProfilePoint(0.000f, 1.875f, 0f, 1f),
-            new ProfilePoint(-0.485f, 1.811f, -0.259f, 0.966f),
-            new ProfilePoint(-0.938f, 1.624f, -0.500f, 0.866f),
-            new ProfilePoint(-1.326f, 1.326f, -0.609f, 0.793f),
-            new ProfilePoint(-1.326f, 1.326f, -0.793f, 0.609f),
-            new ProfilePoint(-1.624f, 0.937f, -0.793f, 0.609f),
-            new ProfilePoint(-1.624f, 0.937f, -1.000f, 0.000f),
-            new ProfilePoint(-1.624f, 0.900f, -1.000f, 0.000f),
-            new ProfilePoint(-1.624f, -0.900f, -1.000f, 0.000f),
-            new ProfilePoint(-1.624f, -0.938f, -1.000f, 0.000f),
-            new ProfilePoint(-1.624f, -0.938f, -0.793f, -0.609f),
-            new ProfilePoint(-1.326f, -1.326f, -0.793f, -0.609f),
-            new ProfilePoint(-1.326f, -1.326f, -0.609f, -0.793f),
-            new ProfilePoint(-0.938f, -1.624f, -0.500f, -0.866f),
-            new ProfilePoint(-0.485f, -1.811f, -0.259f, -0.966f),
-            new ProfilePoint(0.000f, -1.875f, 0f, -1f));
+        public static ProfileSection Mk3Profile = new ProfileSection(
+            new ProfilePoint[]
+            {
+                new ProfilePoint(1.624f, 0f, 1f, 0f, 0f),
+                new ProfilePoint(1.624f, -0.9f, 1f, 0f, 0.0777f),
+                new ProfilePoint(1.624f, -0.938f, 1f, 0f, 0.081f),
+                new ProfilePoint(1.624f, -0.938f, 0.793f, -0.609f, 0.081f),
+                new ProfilePoint(1.326f, -1.326f, 0.793f, -0.609f, 0.1232f),
+                new ProfilePoint(1.326f, -1.326f, 0.609f, -0.793f, 0.1232f),
+                new ProfilePoint(0.938f, -1.624f, 0.5f, -0.866f, 0.1655f),
+                new ProfilePoint(0.485f, -1.811f, 0.259f, -0.966f, 0.2078f),
+                new ProfilePoint(0f, -1.875f, 0f, -1f, 0.25f),
+                new ProfilePoint(-0.485f, -1.811f, -0.259f, -0.966f, 0.2922f),
+                new ProfilePoint(-0.938f, -1.624f, -0.5f, -0.866f, 0.3346f),
+                new ProfilePoint(-1.326f, -1.326f, -0.609f, -0.793f, 0.3768f),
+                new ProfilePoint(-1.326f, -1.326f, -0.793f, -0.609f, 0.3768f),
+                new ProfilePoint(-1.624f, -0.938f, -0.793f, -0.609f, 0.419f),
+                new ProfilePoint(-1.624f, -0.938f, -1f, 0f, 0.419f),
+                new ProfilePoint(-1.624f, -0.9f, -1f, 0f, 0.4223f),
+                new ProfilePoint(-1.624f, 0.9f, -1f, 0f, 0.5777f),
+                new ProfilePoint(-1.624f, 0.937f, -1f, 0f, 0.5809f),
+                new ProfilePoint(-1.624f, 0.937f, -0.793f, 0.609f, 0.5809f),
+                new ProfilePoint(-1.326f, 1.326f, -0.793f, 0.609f, 0.6232f),
+                new ProfilePoint(-1.326f, 1.326f, -0.609f, 0.793f, 0.6232f),
+                new ProfilePoint(-0.938f, 1.624f, -0.5f, 0.866f, 0.6655f),
+                new ProfilePoint(-0.485f, 1.811f, -0.259f, 0.966f, 0.7078f),
+                new ProfilePoint(0f, 1.875f, 0f, 1f, 0.75f),
+                new ProfilePoint(0.485f, 1.811f, 0.259f, 0.966f, 0.7922f),
+                new ProfilePoint(0.938f, 1.624f, 0.5f, 0.866f, 0.8346f),
+                new ProfilePoint(1.326f, 1.326f, 0.609f, 0.793f, 0.8768f),
+                new ProfilePoint(1.326f, 1.326f, 0.793f, 0.609f, 0.8768f),
+                new ProfilePoint(1.624f, 0.937f, 0.793f, 0.609f, 0.9191f),
+                new ProfilePoint(1.624f, 0.937f, 1f, 0f, 0.9191f),
+                new ProfilePoint(1.624f, 0.9f, 1f, 0f, 0.9223f),
+                new ProfilePoint(1.624f, 0f, 1f, 0f, 1f)
+            }, InitializeFlag.Initialized);
 
         #endregion
 
@@ -414,13 +476,13 @@ namespace ProceduralParts.Geometry
         public static ProfileSection GetMk2Section(float diameter)
         {
             float scale = (diameter / 1.5f);
-            return new ProfileSection(Mk2Profile.Points.Select(p => new ProfilePoint(p.Position * scale, p.Normal)).ToArray());
+            return new ProfileSection(Mk2Profile.Points.Select(p => new ProfilePoint(p.Position * scale, p.Normal, p.SideUV)), InitializeFlag.Initialized);
         }
 
         public static ProfileSection GetMk3Section(float diameter)
         {
             float scale = (diameter / 3.75f);
-            return new ProfileSection(Mk3Profile.Points.Select(p => new ProfilePoint(p.Position * scale, p.Normal)).ToArray());
+            return new ProfileSection(Mk3Profile.Points.Select(p => new ProfilePoint(p.Position * scale, p.Normal, p.SideUV)), InitializeFlag.Initialized);
         }
 
         public static ProfileSection GetPrismSection(int sideCount, float diameter)
@@ -430,19 +492,16 @@ namespace ProceduralParts.Geometry
             float halfT = theta / 2f;
             float radius = diameter / 2f;
             var startAngle = -Mathf.PI / 2f;//-90°
+
             for (int s = 0; s < sideCount; s++)
             {
                 var curAngle = startAngle + (theta * s);
                 var norm = ProfilePoint.GetPoint(curAngle, 1f);
-                var pt1 = new ProfilePoint(ProfilePoint.GetPoint(curAngle - halfT, radius), norm);
-                var pt2 = new ProfilePoint(ProfilePoint.GetPoint(curAngle + halfT, radius), norm);
-                points.Add(pt1);
-                //if (s == 0)
-                //    points.Add(ProfilePoint.Lerp(pt1, pt2, 0.5f));
-                points.Add(pt2);
+                points.Add(new ProfilePoint(ProfilePoint.GetPoint(curAngle - halfT, radius), norm));
+                points.Add(new ProfilePoint(ProfilePoint.GetPoint(curAngle + halfT, radius), norm));
             }
 
-            return new ProfileSection(points.ToArray());
+            return new ProfileSection(points, InitializeFlag.Order | InitializeFlag.CalculateUVs);
         }
 
         public static ProfileSection GetCylinderSection(float diameter, int resolution = 64)
@@ -460,7 +519,7 @@ namespace ProceduralParts.Geometry
 
             points[resolution].Position = points[0].Position;
             points[resolution].Normal = points[0].Normal;
-            return new ProfileSection(points.ToArray());
+            return new ProfileSection(points, InitializeFlag.CalculateUVs);
         }
 
         #endregion

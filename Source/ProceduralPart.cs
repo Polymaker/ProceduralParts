@@ -6,6 +6,8 @@ using UnityEngine;
 using KSPAPIExtensions;
 //using KSPAPIExtensions.PartMessage;
 using System.Reflection;
+using KSP.UI;
+using KSP.UI.Screens;
 
 namespace ProceduralParts
 {
@@ -14,7 +16,9 @@ namespace ProceduralParts
 
     public class ProceduralPart : PartModule, IPartCostModifier
     {
+
         #region TestFlight
+
         protected static bool tfChecked = false;
         protected static bool tfFound = false;
         public static Type tfInterface = null;
@@ -65,7 +69,6 @@ namespace ProceduralParts
                 LoadTextureSets();
             InitializeTextureSet();
         }
-
         public void Update()
         {
             if (HighLogic.LoadedSceneIsEditor)
@@ -88,7 +91,7 @@ namespace ProceduralParts
         private Vector3 tempColliderSize;
 
         private BoxCollider tempCollider;
-        
+
         public override void OnLoad(ConfigNode node)
         {
             // Load stuff from config files
@@ -126,44 +129,41 @@ namespace ProceduralParts
 
         public override string GetInfo()
         {
-            OnInitialize();
             OnStart(StartState.Editor);
 
             // Need to rescale everything to make it look good in the icon, but reenable otherwise OnStart won't get called again.
             isEnabled = enabled = true;
-
+            isInitialized = false;
             return base.GetInfo();
         }
 
         [SerializeField]
         private bool symmetryClone;
 
-        internal bool isInitialized;
+        private bool isInitialized;
 
         public override void OnInitialize()
         {
-            
-            Debug.Log("[ProceduralParts] OnInitialize");
             if (!isInitialized)
                 DoInitialize();
-
         }
 
         public override void OnStart(StartState state)
         {
-            Debug.Log("[ProceduralParts] OnStart");
             if (!isInitialized)
                 DoInitialize();
         }
 
         private void DoInitialize()
         {
+            isInitialized = true;
+
             if (tempCollider != null)
             {
                 // delete the temporary collider, if there is one
                 Component.Destroy(tempCollider);
                 tempCollider = null;
-                Debug.Log("destroyed temporary collider");
+                //Debug.Log("destroyed temporary collider");
             }
 
             // Update internal state
@@ -209,12 +209,10 @@ namespace ProceduralParts
             }
             catch (Exception ex)
             {
-                Debug.LogError("[ProceduralParts]: DoInitialize: caught exception.");
+                Debug.LogError("[ProceduralParts]: OnStart: caught exception.");
                 Debug.LogException(ex);
                 isEnabled = enabled = false;
             }
-
-            isInitialized = true;
         }
 
         public void OnDestroy()
@@ -225,6 +223,7 @@ namespace ProceduralParts
 			GameEvents.onPartAttach.Remove(OnPartAttach);
 			GameEvents.onPartRemove.Remove(OnPartRemove);
         }
+
 
         public void OnUpdateEditor()
         {
@@ -241,6 +240,7 @@ namespace ProceduralParts
             {
                 if(needsTechInit)
                     InitializeTechLimits();
+
                 UpdateTexture();
                 UpdateShape();
             }
@@ -249,7 +249,6 @@ namespace ProceduralParts
                 Debug.LogException(ex);
                 isEnabled = enabled = false;
             }
-
         }
 
         private bool skipNextUpdate;
@@ -301,8 +300,7 @@ namespace ProceduralParts
                 SidesIconMesh = iconSides.GetComponent<MeshFilter>().mesh;
             if(iconEnds != null)
                 EndsIconMesh = iconEnds.GetComponent<MeshFilter>().mesh;
-
-
+            
             SidesMaterial = sides.GetComponent<Renderer>().material;
 			EndsMaterial = ends.GetComponent<Renderer>().material;
 			SidesIconMaterial = iconSides.GetComponent<Renderer>().material;
@@ -320,6 +318,7 @@ namespace ProceduralParts
         }
 
         #endregion
+
 
         #region Collider mesh management methods
 
@@ -821,19 +820,19 @@ namespace ProceduralParts
             if (textureSet == oldTextureSet)
                 return;
 
-            Material EndsMaterial;
-            Material SidesMaterial;
+            Material endsMaterial;
+            Material sidesMaterial;
 
             if(HighLogic.LoadedScene== GameScenes.LOADING)
             {
                 // if we are in loading screen, all changes have to be made to the icon materials. Otherwise all icons will have the same texture 
-                EndsMaterial = this.EndsIconMaterial;
-                SidesMaterial = this.SidesIconMaterial;
+                endsMaterial = this.EndsIconMaterial;
+                sidesMaterial = this.SidesIconMaterial;
             }
             else
             {
-                EndsMaterial = this.EndsMaterial;
-                SidesMaterial = this.SidesMaterial;
+                endsMaterial = this.EndsMaterial;
+                sidesMaterial = this.SidesMaterial;
             }
 
             int newIdx = loadedTextureSets.FindIndex(set => set.name == textureSet);
@@ -850,23 +849,33 @@ namespace ProceduralParts
             // Set shaders
             if (!part.Modules.Contains("ModulePaintable"))
             {
-                SidesMaterial.shader = Shader.Find(tex.sidesBump != null ? "KSP/Bumped Specular" : "KSP/Specular");
+                if (HighLogic.LoadedScene == GameScenes.LOADING)
+                {
+                    sidesMaterial.shader = Shader.Find("KSP/ScreenSpaceMask");
+                    if (endsMaterial != null)
+                        endsMaterial.shader = Shader.Find("KSP/ScreenSpaceMask");
+                }
+                else
+                {
+                    sidesMaterial.shader = Shader.Find(tex.sidesBump != null ? "KSP/Bumped Specular" : "KSP/Specular");
 
-                // pt is no longer specular ever, just diffuse.
-                if (EndsMaterial != null)
-                    EndsMaterial.shader = Shader.Find("KSP/Diffuse");
+                    // pt is no longer specular ever, just diffuse.
+                    if (endsMaterial != null)
+                        endsMaterial.shader = Shader.Find("KSP/Diffuse");
+ 
+                }
             }
 
-            SidesMaterial.SetColor("_SpecColor", tex.sidesSpecular);
-            SidesMaterial.SetFloat("_Shininess", tex.sidesShininess);
+            sidesMaterial.SetColor("_SpecColor", tex.sidesSpecular);
+            sidesMaterial.SetFloat("_Shininess", tex.sidesShininess);
 
             // TODO: shove into config file.
-            if (EndsMaterial != null)
+            if (endsMaterial != null)
             {
                 const float scale = 0.93f;
                 const float offset = (1f / scale - 1f) / 2f;
-                EndsMaterial.mainTextureScale = new Vector2(scale, scale);
-                EndsMaterial.mainTextureOffset = new Vector2(offset, offset);
+                endsMaterial.mainTextureScale = new Vector2(scale, scale);
+                endsMaterial.mainTextureOffset = new Vector2(offset, offset);
             }
 
             // set up UVs
@@ -893,17 +902,17 @@ namespace ProceduralParts
             }
 
             // apply
-            SidesMaterial.mainTextureScale = scaleUV;
-            SidesMaterial.mainTextureOffset = Vector2.zero;
-            SidesMaterial.SetTexture("_MainTex", tex.sides);
+            sidesMaterial.mainTextureScale = scaleUV;
+            sidesMaterial.mainTextureOffset = Vector2.zero;
+            sidesMaterial.SetTexture("_MainTex", tex.sides);
             if (tex.sidesBump != null)
             {
-                SidesMaterial.SetTextureScale("_BumpMap", scaleUV);
-                SidesMaterial.SetTextureOffset("_BumpMap", Vector2.zero);
-                SidesMaterial.SetTexture("_BumpMap", tex.sidesBump);
+                sidesMaterial.SetTextureScale("_BumpMap", scaleUV);
+                sidesMaterial.SetTextureOffset("_BumpMap", Vector2.zero);
+                sidesMaterial.SetTexture("_BumpMap", tex.sidesBump);
             }
-            if (EndsMaterial != null)
-                EndsMaterial.SetTexture("_MainTex", tex.ends);
+            if (endsMaterial != null)
+                endsMaterial.SetTexture("_MainTex", tex.ends);
         }
 
         #endregion
@@ -978,8 +987,6 @@ namespace ProceduralParts
                 shape.ForceNextUpdate();
                 shape.OnUpdateEditor();
             }
-            //nodeAttachments.Clear();
-            //nodeOffsets.Clear();
 
             foreach (AttachNode node in part.attachNodes)
                 InitializeNode(node);
@@ -1113,6 +1120,7 @@ namespace ProceduralParts
 
         private Queue<Action> toAttach = new Queue<Action>();
 
+
         public void OnEditorPartEvent(ConstructionEventType type, Part part)
         {
             switch (type)
@@ -1122,23 +1130,23 @@ namespace ProceduralParts
                     //StartCoroutine(RebuildPartAttachments());
                     Part[] children = childAttach.Select<FreePartAttachment, Part>(x => x.Child).ToArray();
 
-                    foreach (Part attachment in children)
-                    {
-                        PartChildDetached(attachment);
-                    }
+                foreach (Part attachment in children)
+                {
+                    PartChildDetached(attachment);
+                }
 
-                    foreach (Transform t in transform)
-                    {
-                        Part child = t.GetComponent<Part>();
-                        if (child != null)
-                            PartChildAttached(child);
-                    }
-                    if (transform.parent == null)
-                        PartParentChanged(null);
-                    else
-                        PartParentChanged(transform.parent.GetComponent<Part>());
+                foreach (Transform t in transform)
+                {
+                    Part child = t.GetComponent<Part>();
+                    if(child != null)
+                        PartChildAttached(child);
+                }
+                if (transform.parent == null)
+                    PartParentChanged(null);
+                else
+                    PartParentChanged(transform.parent.GetComponent<Part>());
 
-                    break;
+                break;
 
                 case ConstructionEventType.PartOffset:
                     foreach (FreePartAttachment ca in childAttach)
@@ -1156,13 +1164,13 @@ namespace ProceduralParts
                             //RemovePartAttachment(pa);
                             //childAttachments.Remove(pa);
                             //PartChildAttached(part);
-
-
+                            
+                            
                             //break;
                         }
                     }
                     break;
-            }
+            }       
         }
 
         //[PartMessageListener(typeof(PartAttachNodePositionChanged), PartRelationship.Child, GameSceneFilter.AnyEditor)]
@@ -1173,11 +1181,10 @@ namespace ProceduralParts
 			//TODO resrict to child
 
 			AttachNode node = data.Get<AttachNode>("node");
-            //Vector3 location = data.Get("location");
-            //Vector3 orientation = data.Get("orientation");
-            //Vector3 secondaryAxis = data.Get("secondaryAxis");
+			//Vector3 location = data.Get("location");
+			//Vector3 orientation = data.Get("orientation");
+			//Vector3 secondaryAxis = data.Get("secondaryAxis");
 
-            //Debug.Log(string.Format("OnPartAttachNodePositionChanged Part: {0} Node: {1}", node.owner.name, node.id));
 
             if(node == null)
             {
@@ -1191,10 +1198,6 @@ namespace ProceduralParts
                 return;
             }
 
-            //Debug.LogWarning(string.Format("OnPartAttachNodePositionChanged Part: {0}({1}) Node: {2}", node.owner.name, node.owner.GetInstanceID(), node.id));
-            //Debug.Log("position: " + node.position.ToString("G3"));
-            //Debug.Log("orientation: " + node.orientation.ToString("G3"));
-            //Debug.Log("offset: " + node.offset.ToString("G3"));
             if (node.owner.GetComponent<ProceduralPart>() == null)
             {
                 foreach (FreePartAttachment attachment in childAttach)
@@ -1204,8 +1207,10 @@ namespace ProceduralParts
                         Vector3 position = node.owner.transform.TransformPoint(node.position);
                         shape.GetCylindricCoordinates(transform.InverseTransformPoint(position), attachment.Coordinates);
                     }
+
                 }
             }
+
         }
 
 		private void OnPartAttach(GameEvents.HostTargetAction<Part, Part> data)
@@ -1236,36 +1241,6 @@ namespace ProceduralParts
 			//	data.target.srfAttachNode.attachedPart = null;
 
 		}
-        
-        //public void TraceAttachments()
-        //{
-        //    Debug.LogWarning(string.Format("PPart: {0}({1}) Attachments:", part.name, part.GetInstanceID()));
-        //    Debug.Log("partModel.localPosition: " + partModel.localPosition);
-        //    Debug.Log("part.localPosition: " + part.transform.localPosition);
-        //    Debug.Log("srfAttachNode: ");
-        //    part.srfAttachNode.Trace();
-        //    Debug.Log("parentAttachment: ");
-        //    if(parentAttachment != null)
-        //        Debug.Log(string.Format("child.name: {0} follower.name: {1}", parentAttachment.child.name, parentAttachment.follower));
-        //    Debug.Log("attachments (LinkedList<ModelAttachment>):");
-        //    foreach (var att in attachments)
-        //    {
-        //        Debug.Log(string.Format("child.name: {0}, data: {1}", att.child.name, att.data));
-        //    }
-        //    Debug.Log("childAttachments (LinkedList<PartAttachment>):");
-        //    foreach (var att in childAttachments)
-        //    {
-        //        Debug.Log(string.Format("child.name: {0} follower.name: {1}", att.child.name, att.follower));
-        //    }
-        //    Debug.Log("childAttach (LinkedList<FreePartAttachment>):");
-        //    foreach (var att in childAttach)
-        //    {
-        //        Debug.Log(string.Format("child.name: {0} AttachNode.id: {1} AttachNode.owner: {2}", 
-        //            att.Child.name, att.AttachNode.id, att.AttachNode.owner));
-        //        att.AttachNode.Trace();
-        //    }
-            
-        //}
 
         //[PartMessageListener(typeof(PartChildAttached), scenes: GameSceneFilter.AnyEditor)]
         public void PartChildAttached(Part child)
@@ -1429,8 +1404,7 @@ namespace ProceduralParts
 
             Part root = EditorLogic.SortedShipList[0];
 
-            //Debug.LogWarning("Attaching: " + part + " to new parent: " + newParent + " node:" + childToParent.id + 
-            //    " position=" + childToParent.position.ToString("G3"));
+            //Debug.LogWarning("Attaching: " + part + " to new parent: " + newParent + " node:" + childToParent.id + " position=" + childToParent.position.ToString("G3"));
 
              //we need to delta this childAttachment down so that when the translation from the parent reaches here i ends in the right spot
             parentAttachment = AddPartAttachment(position, new ParentTransformable(root, part, childToParent));
@@ -1641,7 +1615,7 @@ namespace ProceduralParts
         [KSPField(isPersistant=true)]
         public float moduleCost = 0f;
 
-        [KSPField(guiActiveEditor=true, guiName="Cost")]
+        [KSPField(guiActiveEditor=true, guiName="cost")]
         private string costDisplay = "";
 
         [KSPField]
@@ -1720,10 +1694,8 @@ namespace ProceduralParts
             }
             return moduleCost;
         }
-
         #endregion
-
-
+      
         //[PartMessageListener(typeof(PartModelChanged), scenes: ~GameSceneFilter.Flight)]
         [KSPEvent(guiActive = false, active = true)]
 		public void OnPartModelChanged()
@@ -1732,12 +1704,8 @@ namespace ProceduralParts
             foreach (FreePartAttachment ca in childAttach)
             {
                 Vector3 newPosition = shape.FromCylindricCoordinates(ca.Coordinates);
-                if (ca.AttachNode.id == "srfAttach")
-                {
-                    Debug.Log("Moving srfAttach to " + newPosition);
-                }
                 newPosition = transform.TransformPoint(newPosition);
-                
+
                 Vector3 oldPosition = ca.Child.transform.TransformPoint(ca.AttachNode.position);
 
                 Vector3 offset = newPosition - oldPosition;
@@ -1813,6 +1781,6 @@ namespace ProceduralParts
                 }
             }
         }
-        
+
     }
 }

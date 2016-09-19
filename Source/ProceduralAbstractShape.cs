@@ -2,6 +2,8 @@
 using UnityEngine;
 using System.Reflection;
 using System.Linq;
+using KSPAPIExtensions;
+
 namespace ProceduralParts
 {
 	public enum PartVolumes
@@ -211,26 +213,43 @@ namespace ProceduralParts
         {
             try
             {
-                //using (PartMessageService.Instance.Consolidate(this))
-                //{
-                    bool wasForce = forceNextUpdate;
-                    forceNextUpdate = false;
+                bool wasForce = forceNextUpdate;
+                forceNextUpdate = false;
 
-                    UpdateShape(wasForce);
+                UpdateShape(wasForce);
 
-                    if (wasForce)
-                    {
-                        ChangeVolume(volumeName, Volume);
-                        if (HighLogic.LoadedSceneIsEditor)
-                            GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
-                    }
-                //}
+                if (wasForce)
+                {
+                    ChangeVolume(volumeName, Volume);
+                    if (HighLogic.LoadedSceneIsEditor)
+                        GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
+                }
+
+                if (HighLogic.LoadedScene == GameScenes.LOADING)
+                    FixEditorIconScale();
             }
             catch (Exception ex)
             {
                 print(ex);
                 enabled = false;
             }
+        }
+
+        private void FixEditorIconScale()
+        {
+
+            var meshBounds = PPart.SidesIconMesh.bounds;
+
+            var nozzleTransform = part.partInfo.iconPrefab.transform.FindDecendant("srbNozzle");
+            MeshFilter nozzleMeshFilter = null;
+            if (nozzleTransform != null && nozzleTransform.GetComponentCached(ref nozzleMeshFilter) != null && nozzleMeshFilter.mesh != null)
+                meshBounds.Encapsulate(nozzleMeshFilter.mesh.bounds);
+
+            var maxSize = Mathf.Max(meshBounds.size.x, meshBounds.size.y, meshBounds.size.z);
+            float factor = (40f / maxSize) / 40f;
+
+            part.partInfo.iconScale = 1f / maxSize;
+            part.partInfo.iconPrefab.transform.GetChild(0).transform.localScale = Vector3.one * factor;
         }
 
         /// <summary>
