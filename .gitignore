@@ -5,6 +5,8 @@
 *.suo
 *.user
 *.sln.docstates
+*.dll.mdb
+CopyToKSP.bat
 
 # e-dog's stuff
 build.bat
