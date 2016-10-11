@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace ProceduralParts.Geometry
 {
-    public class ProfileSection
+    public class ContourProfile
     {
 
         #region Fields
@@ -15,14 +15,13 @@ namespace ProceduralParts.Geometry
         private float _Perimeter;
         private float _Height;
         private float _Width;
-        private ProfilePoint[] _Points;
-        private bool sortedAndOrdered = false;
+        private ContourPoint[] _Points;
 
         #endregion
 
         #region Properties
 
-        public ProfilePoint[] Points
+        public ContourPoint[] Points
         {
             get { return _Points; }
         }
@@ -71,22 +70,7 @@ namespace ProceduralParts.Geometry
 
         #region Ctors
 
-        private ProfileSection(ProfilePoint[] points, bool sorted)
-        {
-            if (points.Length == 0)
-                throw new Exception("Cannot create section with no points");
-            _Points = points;
-            sortedAndOrdered = sorted;
-            CalculateBounds();
-
-            InitializePoints();
-
-            CalculateTopUVs();
-
-            FixRadialUVs();
-        }
-
-        private ProfileSection(ProfilePoint[] points, InitializeFlag initflags)
+        private ContourProfile(ContourPoint[] points, InitializeFlag initflags)
         {
             if (points.Length == 0)
                 throw new Exception("Cannot create section with no points");
@@ -101,16 +85,13 @@ namespace ProceduralParts.Geometry
             FixRadialUVs();
         }
 
-        public ProfileSection(params ProfilePoint[] points)
-            :this(points, InitializeFlag.InitializeAll)
-        {
+        public ContourProfile(params ContourPoint[] points)
+            : this(points, InitializeFlag.InitializeAll) { }
 
-        }
+        public ContourProfile(IEnumerable<ContourPoint> points)
+            : this(points.ToArray(), InitializeFlag.InitializeAll) { }
 
-        public ProfileSection(IEnumerable<ProfilePoint> points)
-            : this(points.ToArray()) { }
-
-        public ProfileSection(IEnumerable<ProfilePoint> points, InitializeFlag initflags)
+        public ContourProfile(IEnumerable<ContourPoint> points, InitializeFlag initflags)
             : this(points.ToArray(), initflags) { }
 
         #endregion
@@ -192,7 +173,7 @@ namespace ProceduralParts.Geometry
             }
         }
 
-        private static float GetSurfaceArea(ProfilePoint point)
+        private static float GetSurfaceArea(ContourPoint point)
         {
             var a = point.Position.magnitude;
             var b = point.Next.Position.magnitude;
@@ -218,12 +199,7 @@ namespace ProceduralParts.Geometry
 
         #endregion
 
-        public static ProfileSection CreateSorted(params ProfilePoint[] points)
-        {
-            return new ProfileSection(points.OrderBy(p => p.NormRadialUV));
-        }
-
-        internal static ProfilePoint[] SortProfilePoints(IEnumerable<ProfilePoint> points)
+        internal static ContourPoint[] SortProfilePoints(IEnumerable<ContourPoint> points)
         {
             var orderedPoints = points.OrderBy(p => p.NormRadialUV).ToList();
             //todo: check for concave shape (eg: star)
@@ -235,7 +211,7 @@ namespace ProceduralParts.Geometry
         /// </summary>
         /// <param name="points"></param>
         /// <returns></returns>
-        internal static ProfilePoint[] OrderProfilePoints(IEnumerable<ProfilePoint> points)
+        internal static ContourPoint[] OrderProfilePoints(IEnumerable<ContourPoint> points)
         {
             var orderedPoints = points.ToList();
 
@@ -253,24 +229,24 @@ namespace ProceduralParts.Geometry
                 orderedPoints.AddRange(endPoints);
             }
 
-            for (int i = orderedPoints.Count - 2; i > 0; i--)
-            {
-                var p1 = orderedPoints[i];
-                var p2 = orderedPoints[i - 1];
-                if (p2.Position == p1.Position && p1.Normal == p2.Normal)
-                    orderedPoints.Remove(p1);
-            }
+            //for (int i = orderedPoints.Count - 2; i > 0; i--)
+            //{
+            //    var p1 = orderedPoints[i];
+            //    var p2 = orderedPoints[i - 1];
+            //    if (p2.Position == p1.Position && p1.Normal == p2.Normal)
+            //        orderedPoints.Remove(p1);
+            //}
             return orderedPoints.ToArray();
         }
 
 
-        public ProfilePoint InterpolateByUV(float uv)
+        public ContourPoint InterpolateByUV(float uv)
         {
             int dummy = 0;
             return InterpolateByUV(uv, out dummy);
         }
 
-        public ProfilePoint InterpolateByUV(float uv, out int insertIdx)
+        public ContourPoint InterpolateByUV(float uv, out int insertIdx)
         {
             insertIdx = -1;
             for (int i = 0; i < PointCount; i++)
@@ -285,7 +261,7 @@ namespace ProceduralParts.Geometry
 
                 if (Mathf.Approximately(curUV, nextUV) && Mathf.Approximately(curUV, uv))
                 {
-                    return ProfilePoint.Slerp(pt1, pt2, 0.5f);
+                    return ContourPoint.Slerp(pt1, pt2, 0.5f);
                 }
 
                 if (nextUV < curUV)
@@ -301,14 +277,14 @@ namespace ProceduralParts.Geometry
                     var delta = (uv - curUV) / (nextUV - curUV);
                     if (float.IsNaN(delta))
                         delta = 0.5f;
-                    return ProfilePoint.Slerp(pt1, pt2, delta);
+                    return ContourPoint.Slerp(pt1, pt2, delta);
                 }
             }
             
             return null;
         }
 
-        private static bool AreSimilar(ProfileSection section1, ProfileSection section2)
+        private static bool AreSimilar(ContourProfile section1, ContourProfile section2)
         {
             if (section1 == section2)
                 return true;
@@ -326,14 +302,14 @@ namespace ProceduralParts.Geometry
 
         #region Section Combining
 
-        public static ProfileSection CreateAdapter(ProfileSection section1, ProfileSection section2)
+        public static ContourProfile CreateAdapter(ContourProfile section1, ContourProfile section2)
         {
             if (AreSimilar(section1, section2))
                 return section1;
 
-            var finalPoints = new List<ProfilePoint>();
+            var finalPoints = new List<ContourPoint>();
 
-            var combinedPoints = new List<ProfilePoint>();
+            var combinedPoints = new List<ContourPoint>();
             combinedPoints.AddRange(section1.Points);
             combinedPoints.AddRange(section2.Points);
 
@@ -352,7 +328,6 @@ namespace ProceduralParts.Geometry
             {
                 uvList = uvList.RemoveDoubles((x, y) => Mathf.Abs(x - y) < 0.001f).ToList();
             }
-
             
             for (int i = 0; i < uvList.Count; i++)
             {
@@ -383,143 +358,166 @@ namespace ProceduralParts.Geometry
             }
 
             //finalPoints.Add(finalPoints[0].Clone());
-            return new ProfileSection(finalPoints.ToArray());
+            return new ContourProfile(finalPoints.ToArray());
         }
 
-        public static ProfileSection Lerp(ProfileSection section1, ProfileSection section2, float t)
+        public static ContourProfile Lerp(ContourProfile section1, ContourProfile section2, float t)
         {
             if (section1.PointCount != section2.PointCount)
                 throw new InvalidOperationException();
-            var finalPoints = new List<ProfilePoint>();
+            var finalPoints = new List<ContourPoint>();
 
             for (int i = 0; i < section1.PointCount; i++)
             {
-                finalPoints.Add(ProfilePoint.Slerp(section1.Points[i], section2.Points[i], t));
+                finalPoints.Add(ContourPoint.Slerp(section1.Points[i], section2.Points[i], t));
             }
-            return new ProfileSection(finalPoints.ToArray(), true);
+            return new ContourProfile(finalPoints.ToArray(), InitializeFlag.CalculateUVs);
         }
 
         #endregion
 
         #region Hard coded Profiles
 
-        public static ProfileSection Mk2Profile = new ProfileSection(
-            new ProfilePoint[]
+        public static ContourProfile Mk2Profile = new ContourProfile(
+            new ContourPoint[]
             {
-                new ProfilePoint(1.25f, 0f, 1f, 0f, 0f),
-                new ProfilePoint(1.25f, -0.15f, 1f, 0f, 0.0242f),
-                new ProfilePoint(1.25f, -0.15f, 0.504f, -0.864f, 0.0242f),
-                new ProfilePoint(0.775f, -0.427f, 0.504f, -0.864f, 0.1128f),
-                new ProfilePoint(0.375f, -0.66f, 0.43f, -0.903f, 0.1873f),
-                new ProfilePoint(0.19f, -0.73f, 0.231f, -0.973f, 0.2192f),
-                new ProfilePoint(0f, -0.75f, 0f, -1f, 0.25f),
-                new ProfilePoint(-0.19f, -0.73f, -0.231f, -0.973f, 0.2808f),
-                new ProfilePoint(-0.375f, -0.66f, -0.43f, -0.903f, 0.3127f),
-                new ProfilePoint(-0.775f, -0.427f, -0.504f, -0.864f, 0.3872f),
-                new ProfilePoint(-1.25f, -0.15f, -0.504f, -0.864f, 0.4758f),
-                new ProfilePoint(-1.25f, -0.15f, -1f, 0f, 0.4758f),
-                new ProfilePoint(-1.25f, 0.15f, -1f, 0f, 0.5242f),
-                new ProfilePoint(-1.25f, 0.15f, -0.504f, 0.864f, 0.5242f),
-                new ProfilePoint(-0.775f, 0.427f, -0.504f, 0.864f, 0.6128f),
-                new ProfilePoint(-0.375f, 0.66f, -0.43f, 0.903f, 0.6873f),
-                new ProfilePoint(-0.19f, 0.73f, -0.231f, 0.973f, 0.7192f),
-                new ProfilePoint(0f, 0.75f, 0f, 1f, 0.75f),
-                new ProfilePoint(0.19f, 0.73f, 0.231f, 0.973f, 0.7808f),
-                new ProfilePoint(0.375f, 0.66f, 0.43f, 0.903f, 0.8127f),
-                new ProfilePoint(0.775f, 0.427f, 0.504f, 0.864f, 0.8872f),
-                new ProfilePoint(1.25f, 0.15f, 0.504f, 0.864f, 0.9758f),
-                new ProfilePoint(1.25f, 0.15f, 1f, 0f, 0.9758f),
-                new ProfilePoint(1.25f, 0f, 1f, 0f, 1f)
+                new ContourPoint(1.25f, 0f, 1f, 0f, 0f),
+                new ContourPoint(1.25f, -0.15f, 1f, 0f, 0.0242f),
+                new ContourPoint(1.25f, -0.15f, 0.504f, -0.864f, 0.0242f),
+                new ContourPoint(0.775f, -0.427f, 0.504f, -0.864f, 0.1128f),
+                new ContourPoint(0.375f, -0.66f, 0.43f, -0.903f, 0.1873f),
+                new ContourPoint(0.19f, -0.73f, 0.231f, -0.973f, 0.2192f),
+                new ContourPoint(0f, -0.75f, 0f, -1f, 0.25f),
+                new ContourPoint(-0.19f, -0.73f, -0.231f, -0.973f, 0.2808f),
+                new ContourPoint(-0.375f, -0.66f, -0.43f, -0.903f, 0.3127f),
+                new ContourPoint(-0.775f, -0.427f, -0.504f, -0.864f, 0.3872f),
+                new ContourPoint(-1.25f, -0.15f, -0.504f, -0.864f, 0.4758f),
+                new ContourPoint(-1.25f, -0.15f, -1f, 0f, 0.4758f),
+                new ContourPoint(-1.25f, 0.15f, -1f, 0f, 0.5242f),
+                new ContourPoint(-1.25f, 0.15f, -0.504f, 0.864f, 0.5242f),
+                new ContourPoint(-0.775f, 0.427f, -0.504f, 0.864f, 0.6128f),
+                new ContourPoint(-0.375f, 0.66f, -0.43f, 0.903f, 0.6873f),
+                new ContourPoint(-0.19f, 0.73f, -0.231f, 0.973f, 0.7192f),
+                new ContourPoint(0f, 0.75f, 0f, 1f, 0.75f),
+                new ContourPoint(0.19f, 0.73f, 0.231f, 0.973f, 0.7808f),
+                new ContourPoint(0.375f, 0.66f, 0.43f, 0.903f, 0.8127f),
+                new ContourPoint(0.775f, 0.427f, 0.504f, 0.864f, 0.8872f),
+                new ContourPoint(1.25f, 0.15f, 0.504f, 0.864f, 0.9758f),
+                new ContourPoint(1.25f, 0.15f, 1f, 0f, 0.9758f),
+                new ContourPoint(1.25f, 0f, 1f, 0f, 1f)
             }, InitializeFlag.Initialized);
 
-        public static ProfileSection Mk3Profile = new ProfileSection(
-            new ProfilePoint[]
+        public static ContourProfile Mk3Profile = new ContourProfile(
+            new ContourPoint[]
             {
-                new ProfilePoint(1.624f, 0f, 1f, 0f, 0f),
-                new ProfilePoint(1.624f, -0.9f, 1f, 0f, 0.0777f),
-                new ProfilePoint(1.624f, -0.938f, 1f, 0f, 0.081f),
-                new ProfilePoint(1.624f, -0.938f, 0.793f, -0.609f, 0.081f),
-                new ProfilePoint(1.326f, -1.326f, 0.793f, -0.609f, 0.1232f),
-                new ProfilePoint(1.326f, -1.326f, 0.609f, -0.793f, 0.1232f),
-                new ProfilePoint(0.938f, -1.624f, 0.5f, -0.866f, 0.1655f),
-                new ProfilePoint(0.485f, -1.811f, 0.259f, -0.966f, 0.2078f),
-                new ProfilePoint(0f, -1.875f, 0f, -1f, 0.25f),
-                new ProfilePoint(-0.485f, -1.811f, -0.259f, -0.966f, 0.2922f),
-                new ProfilePoint(-0.938f, -1.624f, -0.5f, -0.866f, 0.3346f),
-                new ProfilePoint(-1.326f, -1.326f, -0.609f, -0.793f, 0.3768f),
-                new ProfilePoint(-1.326f, -1.326f, -0.793f, -0.609f, 0.3768f),
-                new ProfilePoint(-1.624f, -0.938f, -0.793f, -0.609f, 0.419f),
-                new ProfilePoint(-1.624f, -0.938f, -1f, 0f, 0.419f),
-                new ProfilePoint(-1.624f, -0.9f, -1f, 0f, 0.4223f),
-                new ProfilePoint(-1.624f, 0.9f, -1f, 0f, 0.5777f),
-                new ProfilePoint(-1.624f, 0.937f, -1f, 0f, 0.5809f),
-                new ProfilePoint(-1.624f, 0.937f, -0.793f, 0.609f, 0.5809f),
-                new ProfilePoint(-1.326f, 1.326f, -0.793f, 0.609f, 0.6232f),
-                new ProfilePoint(-1.326f, 1.326f, -0.609f, 0.793f, 0.6232f),
-                new ProfilePoint(-0.938f, 1.624f, -0.5f, 0.866f, 0.6655f),
-                new ProfilePoint(-0.485f, 1.811f, -0.259f, 0.966f, 0.7078f),
-                new ProfilePoint(0f, 1.875f, 0f, 1f, 0.75f),
-                new ProfilePoint(0.485f, 1.811f, 0.259f, 0.966f, 0.7922f),
-                new ProfilePoint(0.938f, 1.624f, 0.5f, 0.866f, 0.8346f),
-                new ProfilePoint(1.326f, 1.326f, 0.609f, 0.793f, 0.8768f),
-                new ProfilePoint(1.326f, 1.326f, 0.793f, 0.609f, 0.8768f),
-                new ProfilePoint(1.624f, 0.937f, 0.793f, 0.609f, 0.9191f),
-                new ProfilePoint(1.624f, 0.937f, 1f, 0f, 0.9191f),
-                new ProfilePoint(1.624f, 0.9f, 1f, 0f, 0.9223f),
-                new ProfilePoint(1.624f, 0f, 1f, 0f, 1f)
+                new ContourPoint(1.624f, 0f, 1f, 0f, 0f),
+                new ContourPoint(1.624f, -0.9f, 1f, 0f, 0.0777f),
+                new ContourPoint(1.624f, -0.938f, 1f, 0f, 0.081f),
+                new ContourPoint(1.624f, -0.938f, 0.793f, -0.609f, 0.081f),
+                new ContourPoint(1.326f, -1.326f, 0.793f, -0.609f, 0.1232f),
+                new ContourPoint(1.326f, -1.326f, 0.609f, -0.793f, 0.1232f),
+                new ContourPoint(0.938f, -1.624f, 0.5f, -0.866f, 0.1655f),
+                new ContourPoint(0.485f, -1.811f, 0.259f, -0.966f, 0.2078f),
+                new ContourPoint(0f, -1.875f, 0f, -1f, 0.25f),
+                new ContourPoint(-0.485f, -1.811f, -0.259f, -0.966f, 0.2922f),
+                new ContourPoint(-0.938f, -1.624f, -0.5f, -0.866f, 0.3346f),
+                new ContourPoint(-1.326f, -1.326f, -0.609f, -0.793f, 0.3768f),
+                new ContourPoint(-1.326f, -1.326f, -0.793f, -0.609f, 0.3768f),
+                new ContourPoint(-1.624f, -0.938f, -0.793f, -0.609f, 0.419f),
+                new ContourPoint(-1.624f, -0.938f, -1f, 0f, 0.419f),
+                new ContourPoint(-1.624f, -0.9f, -1f, 0f, 0.4223f),
+                new ContourPoint(-1.624f, 0.9f, -1f, 0f, 0.5777f),
+                new ContourPoint(-1.624f, 0.937f, -1f, 0f, 0.5809f),
+                new ContourPoint(-1.624f, 0.937f, -0.793f, 0.609f, 0.5809f),
+                new ContourPoint(-1.326f, 1.326f, -0.793f, 0.609f, 0.6232f),
+                new ContourPoint(-1.326f, 1.326f, -0.609f, 0.793f, 0.6232f),
+                new ContourPoint(-0.938f, 1.624f, -0.5f, 0.866f, 0.6655f),
+                new ContourPoint(-0.485f, 1.811f, -0.259f, 0.966f, 0.7078f),
+                new ContourPoint(0f, 1.875f, 0f, 1f, 0.75f),
+                new ContourPoint(0.485f, 1.811f, 0.259f, 0.966f, 0.7922f),
+                new ContourPoint(0.938f, 1.624f, 0.5f, 0.866f, 0.8346f),
+                new ContourPoint(1.326f, 1.326f, 0.609f, 0.793f, 0.8768f),
+                new ContourPoint(1.326f, 1.326f, 0.793f, 0.609f, 0.8768f),
+                new ContourPoint(1.624f, 0.937f, 0.793f, 0.609f, 0.9191f),
+                new ContourPoint(1.624f, 0.937f, 1f, 0f, 0.9191f),
+                new ContourPoint(1.624f, 0.9f, 1f, 0f, 0.9223f),
+                new ContourPoint(1.624f, 0f, 1f, 0f, 1f)
             }, InitializeFlag.Initialized);
 
         #endregion
 
         #region Profile generation (mostly scaling) methods 
 
-        public static ProfileSection GetMk2Section(float diameter)
+        public static ContourProfile GetMk2Section(float diameter)
         {
             float scale = (diameter / 1.5f);
-            return new ProfileSection(Mk2Profile.Points.Select(p => new ProfilePoint(p.Position * scale, p.Normal, p.SideUV)), InitializeFlag.Initialized);
+            return new ContourProfile(Mk2Profile.Points.Select(p => new ContourPoint(p.Position * scale, p.Normal, p.SideUV)), InitializeFlag.Initialized);
         }
 
-        public static ProfileSection GetMk3Section(float diameter)
+        public static ContourProfile GetMk2Section(float diameter, Angle rotOffset)
+        {
+            float scale = (diameter / 1.5f);
+            var rotation = Quaternion.AngleAxis(rotOffset.Degrees, Vector3.forward);
+            var points = Mk2Profile.Points.Select(p => new ContourPoint(rotation * (p.Position * scale), rotation * p.Normal));
+
+            return new ContourProfile(points, InitializeFlag.Order | InitializeFlag.CalculateUVs);
+        }
+
+        public static ContourProfile GetMk3Section(float diameter)
         {
             float scale = (diameter / 3.75f);
-            return new ProfileSection(Mk3Profile.Points.Select(p => new ProfilePoint(p.Position * scale, p.Normal, p.SideUV)), InitializeFlag.Initialized);
+            return new ContourProfile(Mk3Profile.Points.Select(p => new ContourPoint(p.Position * scale, p.Normal, p.SideUV)), InitializeFlag.Initialized);
         }
 
-        public static ProfileSection GetPrismSection(int sideCount, float diameter)
+        public static ContourProfile GetMk3Section(float diameter, Angle rotOffset)
         {
-            var points = new List<ProfilePoint>();
+            float scale = (diameter / 3.75f);
+            var rotation = Quaternion.AngleAxis(rotOffset.Degrees, Vector3.forward);
+            var points = Mk3Profile.Points.Select(p => new ContourPoint(rotation * (p.Position * scale), rotation * p.Normal));
+
+            return new ContourProfile(points, InitializeFlag.Order | InitializeFlag.CalculateUVs);
+        }
+
+        public static ContourProfile GetPrismSection(int sideCount, float diameter)
+        {
+            return GetPrismSection(sideCount, diameter, Angle.Zero);
+        }
+
+        public static ContourProfile GetPrismSection(int sideCount, float diameter, Angle rotOffset)
+        {
+            var points = new List<ContourPoint>();
             float theta = (Mathf.PI * 2f) / (float)sideCount;
             float halfT = theta / 2f;
             float radius = diameter / 2f;
-            var startAngle = -Mathf.PI / 2f;//-90°
+            var startAngle = (-Mathf.PI / 2f) + rotOffset.Radians;//-90°
 
             for (int s = 0; s < sideCount; s++)
             {
                 var curAngle = startAngle + (theta * s);
-                var norm = ProfilePoint.GetPoint(curAngle, 1f);
-                points.Add(new ProfilePoint(ProfilePoint.GetPoint(curAngle - halfT, radius), norm));
-                points.Add(new ProfilePoint(ProfilePoint.GetPoint(curAngle + halfT, radius), norm));
+                var norm = ContourPoint.GetPoint(curAngle, 1f);
+                points.Add(new ContourPoint(ContourPoint.GetPoint(curAngle - halfT, radius), norm));
+                points.Add(new ContourPoint(ContourPoint.GetPoint(curAngle + halfT, radius), norm));
             }
 
-            return new ProfileSection(points, InitializeFlag.Order | InitializeFlag.CalculateUVs);
+            return new ContourProfile(points, InitializeFlag.Order | InitializeFlag.CalculateUVs);
         }
 
-        public static ProfileSection GetCylinderSection(float diameter, int resolution = 64)
+        public static ContourProfile GetCylinderSection(float diameter, int resolution = 64)
         {
-            var points = new List<ProfilePoint>();
+            var points = new List<ContourPoint>();
             float theta = (Mathf.PI * 2f) / (float)resolution;
             for (int s = 0; s <= resolution; s++)
             {
                 var curAngle = theta * s;
-                var norm = ProfilePoint.GetPoint(curAngle, 1f);
+                var norm = ContourPoint.GetPoint(curAngle, 1f);
                 
-                points.Add(new ProfilePoint(ProfilePoint.GetPoint(curAngle, diameter / 2f), norm, s / (float)resolution));
+                points.Add(new ContourPoint(ContourPoint.GetPoint(curAngle, diameter / 2f), norm, s / (float)resolution));
 
             }
 
             points[resolution].Position = points[0].Position;
             points[resolution].Normal = points[0].Normal;
-            return new ProfileSection(points, InitializeFlag.CalculateUVs);
+            return new ContourProfile(points, InitializeFlag.CalculateUVs);
         }
 
         #endregion

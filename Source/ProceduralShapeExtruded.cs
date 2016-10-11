@@ -58,7 +58,7 @@ namespace ProceduralParts
 
         #region Shape
 
-        private ProfileSection lastProfile;
+        private ContourProfile lastProfile;
 
         protected override void UpdateShape(bool force)
         {
@@ -127,7 +127,7 @@ namespace ProceduralParts
             return base.FromCylindricCoordinates(coords);
         }
 
-        private ProfileSection GetSideSection(string shapeName, float diam, int sideCount, bool inscribed)
+        private ContourProfile GetSideSection(string shapeName, float diam, int sideCount, bool inscribed)
         {
             switch (shapeName)
             {
@@ -135,11 +135,11 @@ namespace ProceduralParts
                 //case "Cylinder":
                 //    return ProfileSection.GetCylinderSection(diam);
                 case "Polygon":
-                    return ProfileSection.GetPrismSection(sideCount, GetPolygonOuterDiam(inscribed, diam, sideCount));
+                    return ContourProfile.GetPrismSection(sideCount, GetPolygonOuterDiam(inscribed, diam, sideCount));
                 case "Mk2":
-                    return ProfileSection.GetMk2Section(diam);
+                    return ContourProfile.GetMk2Section(diam);
                 case "Mk3":
-                    return ProfileSection.GetMk3Section(diam);
+                    return ContourProfile.GetMk3Section(diam);
             }
         }
 

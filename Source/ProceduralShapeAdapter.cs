@@ -66,7 +66,6 @@ namespace ProceduralParts
         public float length = 1f;
         protected float oldLength;
 
-
         #endregion
 
         public override void OnStart(StartState state)
@@ -80,7 +79,6 @@ namespace ProceduralParts
             shapeEdit.options = ShapeNames;
             UpdateTechConstraints();
         }
-
 
         public override void UpdateTFInterops()
         {
@@ -98,8 +96,6 @@ namespace ProceduralParts
 
         protected override void UpdateShape(bool force)
         {
-            
-
             if (!force && 
                 oldTopDiameter == topDiameter && 
                 oldBottomDiameter == bottomDiameter &&
@@ -235,19 +231,19 @@ namespace ProceduralParts
             Fields["bottomPolySides"].guiActiveEditor = Fields["bottomIsInscribed"].guiActiveEditor = bottomShape == "Polygon";
         }
 
-        private ProfileSection GetSideSection(string shapeName, float diam, int sideCount, bool inscribed)
+        private ContourProfile GetSideSection(string shapeName, float diam, int sideCount, bool inscribed)
         {
             switch (shapeName)
             {
                 default:
                 case "Cylinder":
-                    return ProfileSection.GetCylinderSection(diam);
+                    return ContourProfile.GetCylinderSection(diam);
                 case "Polygon":
-                    return ProfileSection.GetPrismSection(sideCount, GetPolygonOuterDiam(inscribed, diam, sideCount));
+                    return ContourProfile.GetPrismSection(sideCount, GetPolygonOuterDiam(inscribed, diam, sideCount));
                 case "Mk2":
-                    return ProfileSection.GetMk2Section(diam);
+                    return ContourProfile.GetMk2Section(diam);
                 case "Mk3":
-                    return ProfileSection.GetMk3Section(diam);
+                    return ContourProfile.GetMk3Section(diam);
             }
         }
 

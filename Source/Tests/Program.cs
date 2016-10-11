@@ -12,9 +12,13 @@ namespace Tests
     {
         static void Main(string[] args)
         {
-            var hexProfile = ProfileSection.GetPrismSection(4, 0.625f);
-            var cylinderProfile = ProfileSection.GetCylinderSection(1.25f, 32);
-            foreach (var point in hexProfile.Points)
+            var hexProfile = ContourProfile.GetPrismSection(4, 0.625f);
+            var cylinderProfile = ContourProfile.GetCylinderSection(1.25f, 32);
+            
+            var adapt1 = ContourProfile.CreateAdapter(hexProfile, cylinderProfile);
+            var adapt2 = ContourProfile.CreateAdapter(cylinderProfile, hexProfile);
+            var adapt3 = ContourProfile.Lerp(adapt1, adapt2, 0.5f);
+            foreach (var point in adapt1.Points)
             {
                 Trace.WriteLine(string.Format("uv:{0:0.0} angle:{1:0.00} angle2:{2:0.00}", point.SideUV * 10, point.RadialUV, point.NormRadialUV));
                 //Trace.WriteLine(string.Format("p:{0} n:{1} u:{2} at {3}", point.Position.ToString("G3"), point.NormRadialUV.ToString("G4"), point.SideUV, point.RadialUV));

@@ -6,13 +6,11 @@ using UnityEngine;
 
 namespace ProceduralParts.Geometry
 {
-    public class ProfilePoint
+    public class ContourPoint
     {
         // Fields...
         private int _Index;
-        private ProfileSection _Section;
-        private float _NormRadialUV;
-        private float _RadialUV;
+        private ContourProfile _Section;
         private Vector2 _Normal;
         private Vector2 _Position;
 
@@ -21,7 +19,7 @@ namespace ProceduralParts.Geometry
             get { return _Index; }
         }
 
-        public ProfileSection Section
+        public ContourProfile Section
         {
             get { return _Section; }
         }
@@ -59,29 +57,15 @@ namespace ProceduralParts.Geometry
         /// <summary>
         /// The angle of the point around the center (used for sorting, will replace RadialAngle)
         /// </summary>
-        public float RadialUV
-        {
-            get { return _RadialUV; }
-            set
-            {
-                _RadialUV = value;
-            }
-        }
+        public float RadialUV { get; set; }
 
         /// <summary>
         /// The angle of the point around the center adjusted by considering the normal.
         /// Used to correctly sort two points at the same position with different normals (aka hard edges).
         /// </summary>
-        public float NormRadialUV
-        {
-            get { return _NormRadialUV; }
-            set
-            {
-                _NormRadialUV = value;
-            }
-        }
+        public float NormRadialUV { get; set; }
 
-        public ProfilePoint Next
+        public ContourPoint Next
         {
             get
             {
@@ -91,7 +75,7 @@ namespace ProceduralParts.Geometry
             }
         }
 
-        public ProfilePoint Previous
+        public ContourPoint Previous
         {
             get
             {
@@ -102,10 +86,10 @@ namespace ProceduralParts.Geometry
             }
         }
 
-        public ProfilePoint(Vector2 position, Vector2 normal)
+        public ContourPoint(Vector2 position, Vector2 normal)
             : this(position, normal, 0f) { }
 
-        public ProfilePoint(Vector2 position, Vector2 normal, float sideUV)
+        public ContourPoint(Vector2 position, Vector2 normal, float sideUV)
         {
             _Index = -1;
             _Section = null;
@@ -115,7 +99,7 @@ namespace ProceduralParts.Geometry
             CalculateAngles();
         }
 
-        internal void Init(ProfileSection sec, int idx)
+        internal void Init(ContourProfile sec, int idx)
         {
             _Section = sec;
             _Index = idx;
@@ -123,10 +107,10 @@ namespace ProceduralParts.Geometry
 
         public void CalculateAngles()
         {
-            _RadialUV = GetRadialAngle().Degrees / 360f;
-            _RadialUV = Mathf.Round(_RadialUV * 1000f) / 1000f;
-            _NormRadialUV = GetRadialAngle(true).Degrees / 360f;
-            _NormRadialUV = Mathf.Round(_NormRadialUV * 1000f) / 1000f;
+            RadialUV = GetRadialAngle().Degrees / 360f;
+            RadialUV = Mathf.Round(RadialUV * 1000f) / 1000f;
+            NormRadialUV = GetRadialAngle(true).Degrees / 360f;
+            NormRadialUV = Mathf.Round(NormRadialUV * 1000f) / 1000f;
         }
 
         private Angle GetRadialAngle(bool includeNormal = false)
@@ -138,10 +122,10 @@ namespace ProceduralParts.Geometry
             return radialAngle;
         }
 
-        public ProfilePoint(float pX, float pZ, float nX, float nZ)
+        public ContourPoint(float pX, float pZ, float nX, float nZ)
             : this(new Vector2(pX, pZ), new Vector2(nX, nZ)) { }
 
-        public ProfilePoint(float pX, float pZ, float nX, float nZ, float uv)
+        public ContourPoint(float pX, float pZ, float nX, float nZ, float uv)
             : this(new Vector2(pX, pZ), new Vector2(nX, nZ), uv) { }
         
 
@@ -150,26 +134,26 @@ namespace ProceduralParts.Geometry
             return new Vector2(Mathf.Cos(angle), -Mathf.Sin(angle)) * dist;
         }
 
-        public ProfilePoint Clone()
+        public ContourPoint Clone()
         {
-            return new ProfilePoint(Position, Normal);
+            return new ContourPoint(Position, Normal);
         }
 
-        public static ProfilePoint Lerp(ProfilePoint p1, ProfilePoint p2, float t)
+        public static ContourPoint Lerp(ContourPoint p1, ContourPoint p2, float t)
         {
-            return new ProfilePoint(Vector2.Lerp(p1.Position, p2.Position, t), Vector2.Lerp(p1.Normal, p2.Normal, t));
+            return new ContourPoint(Vector2.Lerp(p1.Position, p2.Position, t), Vector2.Lerp(p1.Normal, p2.Normal, t));
         }
 
-        public static ProfilePoint Slerp(ProfilePoint p1, ProfilePoint p2, float t)
+        public static ContourPoint Slerp(ContourPoint p1, ContourPoint p2, float t)
         {
             if (Mathf.Approximately(t, 0f))
                 return p1.Clone();
             if (Mathf.Approximately(t, 1f))
                 return p2.Clone();
-            return new ProfilePoint(Vector2.Lerp(p1.Position, p2.Position, t), VectorUtils.SlerpNormal(p1.Normal, p2.Normal, t));
+            return new ContourPoint(Vector2.Lerp(p1.Position, p2.Position, t), VectorUtils.SlerpNormal(p1.Normal, p2.Normal, t));
         }
 
-        public bool IsCloseTo(ProfilePoint other)
+        public bool IsCloseTo(ContourPoint other)
         {
             return Position.IsCloseTo(other.Position) && Normal.IsCloseTo(other.Normal);
         }
