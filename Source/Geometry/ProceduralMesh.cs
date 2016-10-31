@@ -8,10 +8,16 @@ namespace ProceduralParts.Geometry
 {
     public class ProceduralMesh
     {
+        private MeshShape _Shape;
         private UncheckedMesh _ColliderMesh;
         private UncheckedMesh _CapsMesh;
         private UncheckedMesh _SidesMesh;
         private float _Volume;
+
+        public MeshShape Shape
+        {
+            get { return _Shape; }
+        }
 
         public float Volume
         {
@@ -33,8 +39,9 @@ namespace ProceduralParts.Geometry
             get { return _ColliderMesh; }
         }
 
-        public ProceduralMesh(UncheckedMesh sidesMesh, UncheckedMesh capsMesh, UncheckedMesh colliderMesh, float volume)
+        public ProceduralMesh(MeshShape shape, UncheckedMesh sidesMesh, UncheckedMesh capsMesh, UncheckedMesh colliderMesh, float volume)
         {
+            _Shape = shape;
             _ColliderMesh = colliderMesh;
             _CapsMesh = capsMesh;
             _SidesMesh = sidesMesh;

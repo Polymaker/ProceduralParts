@@ -59,8 +59,7 @@ namespace ProceduralParts
             oldDiameter = diameter;
             oldLength = length;
             // ReSharper restore CompareOfFloatsByEqualityOperator
-            RefreshPartEditorWindow();
-            RefreshPartEditorWindow();
+            //RefreshPartEditorWindow(); //updates the tank resources' amounts but breaks dragging on sliders
             
             UpdateInterops();
         }

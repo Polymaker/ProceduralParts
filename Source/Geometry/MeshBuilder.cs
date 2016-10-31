@@ -10,52 +10,109 @@ namespace ProceduralParts.Geometry
     public static class MeshBuilder
     {
 
-        public static ProceduralMesh CreateProceduralMesh(ContourProfile profile, float length)
+        public class ShapeParams
         {
-            var meshShape = new MeshProfile(
-                new MeshSection(profile, length / 2f), 
-                new MeshSection(profile, -length / 2f)
-                );
+            public int Subdivisions { get; set; }
+            public float Slant { get; set; }
+            public Angle OffsetRotation { get; set; }
 
-            return CreateProceduralMesh(meshShape);
+            public ShapeParams()
+            {
+                Subdivisions = 3;
+                Slant = 0f;
+                OffsetRotation = Angle.Zero;
+            }
+
+            public ShapeParams(int subdivisions, float slant, Angle offsetRotation)
+            {
+                Subdivisions = subdivisions;
+                Slant = slant;
+                OffsetRotation = offsetRotation;
+            }
         }
 
-        public static ProceduralMesh CreateProceduralMesh(ContourProfile top, ContourProfile bottom, float length, int subdivisions = 1)
+        public static ProceduralMesh CreateProceduralMesh(ContourProfile profile, float length)
         {
+            var meshShape = new MeshShape(
+                new MeshLayer(profile, length / 2f),
+                new MeshLayer(profile, -length / 2f)
+                ) { Parameters = new ShapeParams() { Subdivisions = 0 } };
+
+            return CreateProceduralMeshes(meshShape);
+        }
+
+        public static ProceduralMesh CreateProceduralMesh(ContourProfile top, ContourProfile bottom, float length)
+        {
+            return CreateProceduralMesh(top, bottom, length, new ShapeParams());
+        }
+
+        public static ProceduralMesh CreateProceduralMesh(ContourProfile top, ContourProfile bottom, float length, int subdivisions)
+        {
+            return CreateProceduralMesh(top, bottom, length, new ShapeParams() { Subdivisions = subdivisions });
+        }
+
+        public static ProceduralMesh CreateProceduralMesh(ContourProfile top, ContourProfile bottom, float length, ShapeParams shapeParams)
+        {
+            return CreateProceduralMeshes(CreateProceduralMeshShape(top, bottom, length, shapeParams));
+        }
+
+        private static MeshShape CreateProceduralMeshShape(ContourProfile top, ContourProfile bottom, float length, ShapeParams shapeParams)
+        {
+            if (shapeParams.OffsetRotation != Angle.Zero)
+                top = ContourProfile.Rotate(top, shapeParams.OffsetRotation);
+
             var topAdapter = ContourProfile.CreateAdapter(top, bottom);
             var botAdapter = ContourProfile.CreateAdapter(bottom, top);
 
             if (botAdapter.PointCount != topAdapter.PointCount)
             {
                 Debug.Log("Failed to created adapter, sides does not have same number of vertices");
-                
+
                 return null;
             }
 
-            var sections = new List<MeshSection>();
-            sections.Add(new MeshSection(topAdapter, length / 2f));
+            var maxWidth = Mathf.Max(topAdapter.Width, botAdapter.Width);
+            var minWidth = Mathf.Min(topAdapter.Width, botAdapter.Width);
 
-            float subdivRatio = 1f / (subdivisions + 1);
-            float yStep = -length * subdivRatio;
+            var slantAmountX = ((maxWidth - minWidth) / 2f) * shapeParams.Slant;
 
-            for (int i = 1; i <= subdivisions; i++)
+            var sections = new List<MeshLayer>();
+
+            var topLayer = new MeshLayer(topAdapter, length / 2f);
+            if (slantAmountX != 0)
+                topLayer.Offset = new Vector2(slantAmountX, 0);
+            sections.Add(topLayer);
+
+            float subdivRatio = 1f / (shapeParams.Subdivisions + 1);
+            //float yStep = -length * subdivRatio;
+
+            for (int i = 1; i <= shapeParams.Subdivisions; i++)
             {
-                var subSection = ContourProfile.Lerp(topAdapter, botAdapter, subdivRatio * i);
-                sections.Add(new MeshSection(subSection, length / 2f + yStep * i));
+                var t = subdivRatio * i;
+
+                var subSection = ContourProfile.Lerp(topAdapter, botAdapter, t);
+
+                var meshLayer = new MeshLayer(subSection, Mathf.Lerp(length/2f, -length/2f, t));
+
+                if (slantAmountX != 0)
+                    meshLayer.Offset = new Vector2(slantAmountX * (1f - t), 0);
+
+                sections.Add(meshLayer);
             }
 
-            sections.Add(new MeshSection(botAdapter, -length / 2f));
+            var bottomLayer = new MeshLayer(botAdapter, -length / 2f);
 
-            var meshShape = new MeshProfile(sections);
+            sections.Add(bottomLayer);
 
-            return CreateProceduralMesh(meshShape);
+            return new MeshShape(sections) { Parameters = shapeParams };
         }
 
-        private static ProceduralMesh CreateProceduralMesh(MeshProfile meshShape)
+        private static ProceduralMesh CreateProceduralMeshes(MeshShape meshShape)
         {
             var baseMesh = CreateSideMesh(meshShape);
             var endsMesh = CreateEndsMesh(meshShape);
-            var collider = MergeMeshes(baseMesh, endsMesh);
+            var collider = CreateColliderMesh(meshShape);
+            
             float volume = 0f;
             for (int i = 0; i < meshShape.SubDivCount - 1; i++)
             {
@@ -63,37 +120,9 @@ namespace ProceduralParts.Geometry
                 var avgArea = (subDiv.Profile.SurfaceArea + subDiv.Next.Profile.SurfaceArea) / 2f;
                 volume += avgArea * (subDiv.PosY - subDiv.Next.PosY);
             }
-            return new ProceduralMesh(baseMesh, endsMesh, collider, volume);
+            return new ProceduralMesh(meshShape, baseMesh, endsMesh, collider, volume);
         }
 
-        public static UncheckedMesh CreateAdapterSides(ContourProfile bottom, ContourProfile top, float length, int subdivisions = 1)
-        {
-
-            var bAdapterSection = ContourProfile.CreateAdapter(bottom, top);
-            var tAdapterSection = ContourProfile.CreateAdapter(top, bottom);
-
-            if (bAdapterSection.PointCount != tAdapterSection.PointCount)
-            {
-                Debug.Log("Failed to created adapter, sides does not have same number of vertices");
-                return new UncheckedMesh(0, 0);
-            }
-            var sections = new List<MeshSection>();
-            sections.Add(new MeshSection(tAdapterSection, length / 2f));
-            
-            float subdivRatio = 1f / (subdivisions + 1);
-            float yStep = -length * subdivRatio;
-            for (int i = 1; i <= subdivisions; i++)
-            {
-                var subdivSection = ContourProfile.Lerp(tAdapterSection, bAdapterSection, subdivRatio * i);
-                sections.Add(new MeshSection(subdivSection, length / 2f + yStep * i));
-            }
-            sections.Add(new MeshSection(bAdapterSection, -length / 2f));
-
-            var adapterShape = new MeshProfile(sections);
-
-            return CreateSideMesh(adapterShape);
-        }
-        
         private static UncheckedMesh WriteMesh(List<Vertex> vertices, List<int> triangleIndices)
         {
             var mesh = new UncheckedMesh(vertices.Count, triangleIndices.Count / 3);
@@ -147,7 +176,7 @@ namespace ProceduralParts.Geometry
             return finalMesh;
         }
 
-        private static UncheckedMesh CreateSideMesh(MeshProfile shape)
+        private static UncheckedMesh CreateSideMesh(MeshShape shape)
         {
             var vertices = new List<Vertex>();
             var triangles = new List<int>();
@@ -166,7 +195,7 @@ namespace ProceduralParts.Geometry
             return WriteMesh(vertices, triangles);
         }
 
-        private static UncheckedMesh CreateEndsMesh(MeshProfile shape)
+        private static UncheckedMesh CreateEndsMesh(MeshShape shape)
         {
             var vertices = new List<Vertex>();
             var triangles = new List<int>();
@@ -177,8 +206,10 @@ namespace ProceduralParts.Geometry
             var bottomVertices = shape.Bottom.Points.Select(p => p.GetCapVertex())
                 .RemoveDoubles((v1, v2) => v1.Pos.IsCloseTo(v2.Pos)).ToList();
 
-            var topCenter = new Vertex(Vector3.up * shape.Top.PosY, Vector3.up, new Vector4(-1, 0, 0, 1), new Vector2(0.5f, 0.5f));
-            var botCenter = new Vertex(Vector3.up * shape.Bottom.PosY, Vector3.down, new Vector4(-1, 0, 0, -1), new Vector2(0.5f, 0.5f));
+            var topCenter = new Vertex(Vector3.up * shape.Top.PosY + new Vector3(shape.Top.Offset.x,0,shape.Top.Offset.y), 
+                Vector3.up, new Vector4(-1, 0, 0, 1), new Vector2(0.5f, 0.5f));
+            var botCenter = new Vertex(Vector3.up * shape.Bottom.PosY + new Vector3(shape.Bottom.Offset.x, 0, shape.Bottom.Offset.y), 
+                Vector3.down, new Vector4(-1, 0, 0, -1), new Vector2(0.5f, 0.5f));
 
             vertices.Add(topCenter);
             vertices.AddRange(topVertices);
@@ -204,10 +235,32 @@ namespace ProceduralParts.Geometry
             return WriteMesh(vertices, triangles);
         }
 
+        private static UncheckedMesh CreateColliderMesh(MeshShape shape)
+        {
+            var simplifiedTop = ContourProfile.Simplify(shape.Top.Profile);
+            var simplifiedBot = ContourProfile.Simplify(shape.Bottom.Profile);
+
+            ShapeParams collParams = new ShapeParams() { Subdivisions = 2 };
+            if (shape.Parameters != null)
+            {
+                collParams.Slant = shape.Parameters.Slant;
+                collParams.OffsetRotation = shape.Parameters.OffsetRotation;
+            }
+
+            var colliderShape = CreateProceduralMeshShape(simplifiedTop, 
+                simplifiedBot, 
+                shape.Length,
+                collParams);
+            var sideMesh = CreateSideMesh(colliderShape);
+            var endsMesh = CreateEndsMesh(colliderShape);
+            var collider = MergeMeshes(sideMesh, endsMesh);
+            return collider;
+        }
+
         private static IEnumerable<int> Triangulate(MeshPoint point)
         {
             //sections points are ordered by radial angle (outward), so 'point.Next' is at the left of 'point'
-            return Triangulate(point.Next, point, point.Bottom.Next, point.Bottom);
+            return Triangulate(point.Next, point, point.Below.Next, point.Below);
         }
 
         private static IEnumerable<int> Triangulate(MeshPoint tl, MeshPoint tr, MeshPoint bl, MeshPoint br)
@@ -255,250 +308,6 @@ namespace ProceduralParts.Geometry
             return triangles;
         }
 
-        #region Helper Classes
-
-        private class MeshProfile
-        {
-            // Fields...
-            private MeshSection[] _Sections;
-
-            public MeshSection[] Sections
-            {
-                get { return _Sections; }
-            }
-            
-            public int PointCount
-            {
-                get { return Sections[0].PointCount; }
-            }
-
-            public int SubDivCount
-            {
-                get { return Sections.Length; }
-            }
-
-            public MeshSection Top
-            {
-                get { return Sections[0]; }
-            }
-
-            public MeshSection Bottom
-            {
-                get { return Sections[Sections.Length - 1]; }
-            }
-
-            public float Length
-            {
-                get { return Top.PosY - Bottom.PosY; }
-            }
-
-            public MeshProfile(IEnumerable<MeshSection> sections)
-            {
-                _Sections = sections.OrderByDescending(s => s.PosY).ToArray();
-                for (int i = 0; i < Sections.Length; i++)
-                {
-                    Sections[i].Mesh = this;
-                    Sections[i].Index = i;
-                }
-
-                for (int i = 0; i < Sections.Length; i++)
-                    Sections[i].Init();
-            }
-
-            public MeshProfile(params MeshSection[] sections)
-            {
-                _Sections = sections.OrderByDescending(s => s.PosY).ToArray();
-                for (int i = 0; i < Sections.Length; i++)
-                {
-                    Sections[i].Mesh = this;
-                    Sections[i].Index = i;
-                }
-
-                for (int i = 0; i < Sections.Length; i++)
-                    Sections[i].Init();
-            }
-        }
-
-        private class MeshSection
-        {
-            private ContourProfile _Profile;
-            private MeshPoint[] _Points;
-
-            public int Index { get; set; }
-
-            public MeshProfile Mesh { get; set; }
-
-
-            public ContourProfile Profile
-            {
-                get { return _Profile; }
-            }
-
-            public float PosY { get; set; }
-
-            public MeshPoint[] Points
-            {
-                get { return _Points; }
-            }
-            
-            public int PointCount
-            {
-                get { return Profile.PointCount; }
-            }
-
-            public MeshSection Previous
-            {
-                get
-                {
-                    if (Mesh == null || Index == 0)
-                        return null;
-                    return Mesh.Sections[Index - 1];
-                }
-            }
-
-            public MeshSection Next
-            {
-                get
-                {
-                    if (Mesh == null || Index == Mesh.Sections.Length - 1)
-                        return null;
-                    return Mesh.Sections[Index + 1];
-                }
-            }
-
-            public float UV
-            {
-                get
-                {
-                    if (Mesh == null || Index < 0)
-                        return 0f;
-                    return /*1f - */(Index / (float)(Mesh.SubDivCount - 1));
-                }
-            }
-
-            public MeshSection(ContourProfile profile, float posY)
-            {
-                Index = -1;
-                _Profile = profile;
-                PosY = posY;
-                _Points = new MeshPoint[profile.PointCount];
-                for (int i = 0; i < profile.PointCount; i++)
-                    _Points[i] = new MeshPoint(this, i);
-            }
-
-            public void Init()
-            {
-                for (int i = 0; i < PointCount; i++)
-                    _Points[i].Init();
-            }
-        }
-
-        [System.Diagnostics.DebuggerDisplay("{Value}")]
-        private class MeshPoint
-        {
-            public MeshSection Section { get; set; }
-
-            private Vertex _Value;
-            private int _Index;
-
-            #region Properties
-
-            public int Index
-            {
-                get { return _Index; }
-            }
-
-            public ContourPoint Point
-            {
-                get
-                {
-                    return Section.Profile.Points[Index];
-                }
-            }
-
-            public int vIndex
-            {
-                get
-                {
-                    return (Section.Index * Section.PointCount) + Index;
-                }
-            }
-
-            public Vertex Value
-            {
-                get { return _Value; }
-            }
-
-            public MeshPoint Top
-            {
-                get
-                {
-                    if (Section == null || Section.Previous == null)
-                        return null;
-                    return Section.Previous.Points[Index];
-                }
-            }
-
-            public MeshPoint Bottom
-            {
-                get
-                {
-                    if (Section == null || Section.Next == null)
-                        return null;
-                    return Section.Next.Points[Index];
-                }
-            }
-
-            public MeshPoint Next
-            {
-                get
-                {
-                    if (Index < 0 || Section == null)
-                        return null;
-                    return Section.Points[(Index + 1) % Section.PointCount];
-                }
-            }
-
-            public MeshPoint Previous
-            {
-                get
-                {
-                    if (Index < 0 || Section == null)
-                        return null;
-                    int prevIndex = (Index == 0 ? Section.PointCount : Index) - 1;
-                    return Section.Points[prevIndex];
-                }
-            }
-
-            #endregion
-
-            public MeshPoint(MeshSection section, int index)
-            {
-                Section = section;
-                _Index = index;
-            }
-
-            public void Init()
-            {
-                var vp = new Vector3(Point.Position.x, Section.PosY, Point.Position.y);
-                var vn = new Vector3(Point.Normal.x, 0, Point.Normal.y);
-                
-
-                var np = Next.Point.Position.IsCloseTo(Point.Position) ? Next.Next : Next;
-                var tanN = (np.Point.Position - Point.Position).normalized;
-                var tan = new Vector4(tanN.x, 0, tanN.y, -1f);
-                _Value = new Vertex(vp, vn, tan, new Vector2(Point.SideUV, Section.UV));
-            }
-
-            public Vertex GetCapVertex()
-            {
-                return new Vertex(Value.Pos, 
-                    Section.PosY > 0 ? Vector3.up : Vector3.down,
-                    new Vector4(-1, 0, 0, Section.PosY > 0 ? 1 : -1), 
-                    Point.TopUV);
-            }
-        }
-
-        #endregion
     }
+
 }

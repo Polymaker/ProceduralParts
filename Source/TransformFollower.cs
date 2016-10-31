@@ -5,7 +5,7 @@ namespace ProceduralParts
     public class TransformFollower : MonoBehaviour
     {
         [SerializeField]
-        private Transformable target;
+        public Transformable target;
         [SerializeField]
         private bool hasParent;
         [SerializeField]
@@ -175,6 +175,8 @@ namespace ProceduralParts
             public abstract void Translate(Vector3 translation);
 
             public abstract void Rotate(Quaternion rotate);
+
+            public abstract Transform TargetTransform { get; }
         }
 
         public class TransformTransformable : Transformable
@@ -212,6 +214,8 @@ namespace ProceduralParts
             override public void Translate(Vector3 translation)
             {
                 transform.Translate(translation, Space.World);
+                Debug.Log(string.Format("Translating transform {0} by {1} to {2}",
+                    transform.name, translation, transform.position));
             }
 
             override public void Rotate(Quaternion rotate)
@@ -231,6 +235,11 @@ namespace ProceduralParts
             public override string ToString()
             {
                 return transform.ToString();
+            }
+
+            public override Transform TargetTransform
+            {
+                get { return transform; }
             }
         }
     }

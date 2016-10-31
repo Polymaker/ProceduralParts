@@ -205,6 +205,11 @@ namespace KSPAPIExtensions
                 Debug.Log("Not attached");
         }
 
+        public static Vector3 GetWorldPosition(this AttachNode node)
+        {
+            return node.owner.transform.TransformPoint(node.position);
+        }
+
 		/// <summary>
 		/// Register an 'OnUpdate' method for use in the editor.
 		/// This should be done in the OnAwake method of the module, and will ensure that all modules have the

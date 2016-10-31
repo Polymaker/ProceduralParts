@@ -464,11 +464,11 @@ namespace ProceduralParts
 
                 //double maxAmount = (float)Math.Round(tankRes.unitsConst + tankVolume * tankRes.unitsPerKL + mass * tankRes.unitsPerT, 2);
                 double maxAmount = CalculateMaxResourceAmount(tankRes);
-
+                
                 // ReSharper disable CompareOfFloatsByEqualityOperator
                 if (partRes.maxAmount == maxAmount)
                     continue;
-
+                
                 if (tankRes.forceEmpty)
                     partRes.amount = 0;
                 else if (partRes.maxAmount == 0)
@@ -484,7 +484,7 @@ namespace ProceduralParts
                 MaxAmountChanged(part, partRes, partRes.maxAmount);
                 InitialAmountChanged(part, partRes, partRes.amount);
             }
-
+            
             return true;
         }
 
@@ -506,9 +506,11 @@ namespace ProceduralParts
             // Purge the old resources
             foreach (PartResource res in part.Resources)
             {
-                if (keepAmount && selectedTankType.resources.Any(tr => tr.name == res.resourceName))
+                if (selectedTankType.resources.Any(tr => tr.name == res.resourceName))
                 {
                     partResources.Add(res);
+                    if (!keepAmount)
+                        res.amount = -1;
                 }
             }
 
@@ -527,7 +529,10 @@ namespace ProceduralParts
                 node.AddValue("maxAmount", maxAmount);
 
                 PartResource partResource = partResources.FirstOrDefault(r => r.resourceName == res.name);
-                if (!res.forceEmpty && null != partResource)
+                if(partResource != null)
+                    node.AddValue("flowState", partResource.flowState);
+
+                if (!res.forceEmpty && null != partResource && partResource.amount != -1)
                 { 
                     node.AddValue("amount", Math.Min(partResource.amount, maxAmount));
                 }

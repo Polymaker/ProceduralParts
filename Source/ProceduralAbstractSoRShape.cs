@@ -55,18 +55,23 @@ namespace ProceduralParts
 
 
             float radius = coords.r;
-
+            Vector2 slant = Vector2.zero;
             if (coords.RadiusMode != ShapeCoordinates.RMode.OFFSET_FROM_SHAPE_CENTER)
             {
                 if (position.y < lastProfile.First.Value.y)
+                {
+                    slant = lastProfile.First.Value.SlantOffset;
                     radius = coords.RadiusMode == ShapeCoordinates.RMode.OFFSET_FROM_SHAPE_RADIUS ?
                         lastProfile.First.Value.dia / 2.0f + coords.r :
                         radius = lastProfile.First.Value.dia / 2.0f * coords.r;
-
+                }
                 else if (position.y > lastProfile.Last.Value.y)
+                {
+                    slant = lastProfile.Last.Value.SlantOffset;
                     radius = coords.RadiusMode == ShapeCoordinates.RMode.OFFSET_FROM_SHAPE_RADIUS ?
                         lastProfile.Last.Value.dia / 2.0f + coords.r :
                         radius = lastProfile.Last.Value.dia / 2.0f * coords.r;
+                }
                 else
                 {
                     CircleSection pt = lastProfile.First.Value;
@@ -84,10 +89,11 @@ namespace ProceduralParts
                                 t = 0f;
                             float profileRadius = Mathf.Lerp(pv.dia, pt.dia, t) / 2.0f;
 
-                            
-                            radius = coords.RadiusMode == ShapeCoordinates.RMode.OFFSET_FROM_SHAPE_RADIUS ? 
+                            slant = Vector2.Lerp(pv.SlantOffset, pt.SlantOffset, t);
+                            radius = coords.RadiusMode == ShapeCoordinates.RMode.OFFSET_FROM_SHAPE_RADIUS ?
                                 profileRadius + coords.r :
                                 radius = profileRadius * coords.r;
+                            break;
                         }
                     }
                 }
@@ -96,8 +102,8 @@ namespace ProceduralParts
             
             float theta = Mathf.Lerp(0, Mathf.PI * 2f, coords.u);
 
-            position.x = Mathf.Cos(theta) * radius;
-            position.z = -Mathf.Sin(theta) * radius;
+            position.x = (Mathf.Cos(theta) * radius) + slant.x;
+            position.z = (-Mathf.Sin(theta) * radius) + slant.y;
 
             return position;
             
@@ -105,9 +111,6 @@ namespace ProceduralParts
 
         public override void GetCylindricCoordinates(Vector3 position, ShapeCoordinates result)
         {
-
-            Vector2 direction = new Vector2(position.x, position.z);
-
             switch(result.HeightMode)
             {
                 case ShapeCoordinates.YMode.RELATIVE_TO_SHAPE:
@@ -136,28 +139,65 @@ namespace ProceduralParts
 
             
             result.r = 0;
-            
+
+            Vector2 direction = new Vector2(position.x, position.z);
+            if (result.RadiusMode != ShapeCoordinates.RMode.OFFSET_FROM_SHAPE_CENTER)
+            {
+                if (position.y <= lastProfile.First.Value.y)
+                {
+                    direction -= lastProfile.First.Value.SlantOffset;
+                }
+                else if (position.y >= lastProfile.Last.Value.y)
+                {
+                    direction -= lastProfile.Last.Value.SlantOffset;
+                }
+                else
+                {
+                    CircleSection pt = lastProfile.First.Value;
+                    for (LinkedListNode<CircleSection> ptNode = lastProfile.First.Next; ptNode != null; ptNode = ptNode.Next)
+                    {
+                        if (!ptNode.Value.inCollider)
+                            continue;
+                        CircleSection pv = pt;
+                        pt = ptNode.Value;
+
+                        if (position.y >= Mathf.Min(pv.y, pt.y) && position.y < Mathf.Max(pv.y, pt.y))
+                        {
+                            float t = Mathf.InverseLerp(Mathf.Min(pv.y, pt.y), Mathf.Max(pv.y, pt.y), position.y);
+                            if (float.IsNaN(t))
+                                t = 0f;
+                            direction -= Vector2.Lerp(pv.SlantOffset, pt.SlantOffset, t);
+                            break;
+                        }
+
+                    }
+                }
+            }
+
             float theta = Mathf.Atan2(-direction.y, direction.x);
            
             result.u = (Mathf.InverseLerp(-Mathf.PI, Mathf.PI, theta) + 0.5f) % 1.0f;
             if (float.IsNaN(result.u))
                 result.u = 0f;
 
-            if(result.RadiusMode == ShapeCoordinates.RMode.OFFSET_FROM_SHAPE_CENTER)
+            if (result.RadiusMode == ShapeCoordinates.RMode.OFFSET_FROM_SHAPE_CENTER)
             {
                 result.r = direction.magnitude;
                 return;
             }
-
+            
             if (position.y <= lastProfile.First.Value.y)
-                result.r = result.RadiusMode == ShapeCoordinates.RMode.OFFSET_FROM_SHAPE_RADIUS ? 
+            {
+                result.r = result.RadiusMode == ShapeCoordinates.RMode.OFFSET_FROM_SHAPE_RADIUS ?
                     direction.magnitude - lastProfile.First.Value.dia / 2.0f :
                     direction.magnitude / (lastProfile.First.Value.dia / 2.0f); // RELATIVE_TO_SHAPE_RADIUS
-
+            }
             else if (position.y >= lastProfile.Last.Value.y)
+            {
                 result.r = result.RadiusMode == ShapeCoordinates.RMode.OFFSET_FROM_SHAPE_RADIUS ?
                     direction.magnitude - lastProfile.Last.Value.dia / 2.0f :
                     direction.magnitude / (lastProfile.Last.Value.dia / 2.0f); // RELATIVE_TO_SHAPE_RADIUS
+            }
             else
             {
                 CircleSection pt = lastProfile.First.Value;
@@ -168,7 +208,7 @@ namespace ProceduralParts
                     CircleSection pv = pt;
                     pt = ptNode.Value;
 
-                    if(position.y >= Mathf.Min(pv.y, pt.y) && position.y < Mathf.Max(pv.y, pt.y))
+                    if (position.y >= Mathf.Min(pv.y, pt.y) && position.y < Mathf.Max(pv.y, pt.y))
                     {
                         float t = Mathf.InverseLerp(Mathf.Min(pv.y, pt.y), Mathf.Max(pv.y, pt.y), position.y);
                         if (float.IsNaN(t))
@@ -205,7 +245,7 @@ namespace ProceduralParts
 
             public override string ToString()
             {
-                return "Attachment(location:" + location + ", uv=" + uv.ToString("F4") + ")";
+                return String.Format("Attachment(target: {2}, location:{0}, uv={1:F4})", location, uv, follower.target.GetType().Name);
             }
         }
 
@@ -393,7 +433,6 @@ namespace ProceduralParts
         private void MoveAttachments(LinkedList<CircleSection> pts)
         {
             lastProfile = pts;
-
             // top points
             CircleSection top = pts.Last.Value;
             foreach (Attachment a in topAttachments)
@@ -402,7 +441,10 @@ namespace ProceduralParts
                     (a.uv[0] - 0.5f) * top.dia * 0.5f,
                     top.y,
                     (a.uv[1] - 0.5f) * top.dia * 0.5f);
-                //Debug.LogWarning("Moving attachment:" + a + " to:" + pos.ToString("F7") + " uv: " + a.uv.ToString("F5"));
+
+                if (a.follower.target is ProceduralPart.NodeTransformable)
+                    continue;
+                
                 a.follower.transform.localPosition = pos;
                 a.follower.ForceUpdate();
             }
@@ -415,10 +457,58 @@ namespace ProceduralParts
                     (a.uv[0] - 0.5f) * bot.dia * 0.5f,
                     bot.y,
                     (a.uv[1] - 0.5f) * bot.dia * 0.5f);
+
+                if (a.follower.target is ProceduralPart.NodeTransformable)
+                    continue;
+
                 //Debug.LogWarning("Moving attachment:" + a + " to:" + pos.ToString("F7") + " uv: " + a.uv.ToString("F5"));
                 a.follower.transform.localPosition = pos;
                 a.follower.ForceUpdate();
             }
+
+            var topNode = part.FindAttachNode(topNodeName);
+            var bottomNode = part.FindAttachNode(bottomNodeName);
+            var topNodeFollower = GetAttachNodeFollower(topNodeName);
+            var bottomNodeFollower = GetAttachNodeFollower(bottomNodeName);
+
+            if (topNodeFollower != null && bottomNodeFollower != null)
+            {
+
+                var finalTopNodePosLocal = new Vector3(top.SlantOffset.x, top.y, top.SlantOffset.y);
+
+                topNodeFollower.transform.localPosition = finalTopNodePosLocal;
+                topNodeFollower.ForceUpdate();
+
+                if (topNode.attachedPart != null && topNode.attachedPart == part.parent)
+                {
+                    var parentNode = topNode.attachedPart.FindAttachNodeByPart(part);
+                    var pnPos = parentNode.GetWorldPosition() + part.attPos;
+                    var myNodePos = topNode.GetWorldPosition();
+                    var delta = pnPos - myNodePos;
+                    if (delta != Vector3.zero)
+                        part.transform.Translate(delta, Space.World);
+                }
+
+                var finalBotNodePosLocal = new Vector3(bot.SlantOffset.x, bot.y, bot.SlantOffset.y);
+                //var finalBotNodePosWorld = part.transform.TransformPoint(finalBotNodePosLocal);
+                //var botNodeDelta = finalBotNodePosWorld - bottomNodeFollower.transform.position;
+
+                //if (botNodeDelta != Vector3.zero && bottomNode.attachedPart != null)
+                //{
+                //    if (parentAttachInfo != null && parentAttachInfo.childToParent == bottomNode)
+                //    {
+
+                //    }
+                //    else
+                //    {
+                //        //var partFollower = bottomAttachments.FirstOrDefault(a => a.follower.target.TargetTransform == bottomNode.attachedPart.transform);
+                //    }
+                //}
+
+                bottomNodeFollower.transform.localPosition = finalBotNodePosLocal;
+                bottomNodeFollower.ForceUpdate();
+            }
+
 
             // sides
             CircleSection pv = null;
@@ -454,15 +544,15 @@ namespace ProceduralParts
                 // using cylindrical coords
                 float r = Mathf.Lerp(pv.dia * 0.5f, pt.dia * 0.5f, t);
                 float y = Mathf.Lerp(pv.y, pt.y, t);
-
+                var slant = Vector2.Lerp(pv.SlantOffset, pt.SlantOffset, t);
                 float theta = Mathf.Lerp(0, Mathf.PI * 2f, a.uv[0]);
 
                 float x = Mathf.Cos(theta) * r;
                 float z = -Mathf.Sin(theta) * r;
 
-                var attPos = new Vector3(x, y, z);
+                var attPos = new Vector3(x + slant.x, y, z + slant.y);
 
-                if (this is ProceduralShapeExtruded)
+                if (this is ProceduralShapeExtruded || this is ProceduralShapeAdapter)
                 {
                     attPos = FromCylindricCoordinates(new ShapeCoordinates(ShapeCoordinates.RMode.OFFSET_FROM_SHAPE_CENTER, ShapeCoordinates.YMode.OFFSET_FROM_SHAPE_CENTER, a.uv[0], y, r));
                 }
@@ -479,6 +569,22 @@ namespace ProceduralParts
                 a.follower.transform.localRotation = rot;
                 a.follower.ForceUpdate();
             }
+        }
+
+
+
+        private TransformFollower GetAttachNodeFollower(string nodeId)
+        {
+            var allAttach = topAttachments.Concat(bottomAttachments);
+            foreach (var a in allAttach)
+            {
+                if (a.follower.target is ProceduralPart.NodeTransformable)
+                {
+                    if (((ProceduralPart.NodeTransformable)a.follower.target).ProxyNode.id == nodeId)
+                        return a.follower;
+                }
+            }
+            return null;
         }
 
         private static Quaternion SideAttachOrientation(CircleSection pv, CircleSection pt, float theta, out Vector3 normal)
@@ -554,7 +660,9 @@ namespace ProceduralParts
             public readonly CirclePoints circ;
             public readonly CirclePoints colliderCirc;
 
-            public CircleSection(float dia, float y, float v, Vector2 norm, bool inRender = true, bool inCollider = true, CirclePoints circ = null, CirclePoints colliderCirc = null)
+            public Vector2 SlantOffset;
+
+            public CircleSection(float dia, float y, float v, Vector2 norm, bool inRender = true, bool inCollider = true, CirclePoints circ = null, CirclePoints colliderCirc = null, Vector2 slantOffset = new Vector2())
             {
                 this.dia = dia;
                 this.y = y;
@@ -564,6 +672,7 @@ namespace ProceduralParts
                 this.inCollider = inCollider;
                 this.circ = inRender ? (circ ?? CirclePoints.ForDiameter(dia, MaxCircleError, MinCircleVertexes)) : null;
                 this.colliderCirc = inCollider ? (colliderCirc ?? this.circ ?? CirclePoints.ForDiameter(dia, MaxCircleError, MinCircleVertexes)) : null;
+                this.SlantOffset = slantOffset;
             }
 
             public bool CustomCollider
@@ -598,8 +707,6 @@ namespace ProceduralParts
             return verticies;
         }
         
-
-
         protected void WriteMeshes(params CircleSection[] pts)
         {
             WriteMeshes(new LinkedList<CircleSection>(pts));
@@ -909,6 +1016,34 @@ namespace ProceduralParts
             // TODO: separate out the meshes for each end so we can use the scale for texturing.
             RaiseChangeTextureScale(nodeName, PPart.EndsMaterial, new Vector2(pt.dia, pt.dia));
         }
+
+        //protected void SetNodeOffset(string nodeName, Vector2 offset)
+        //{
+        //    AttachNode node = part.attachNodes.Find(n => n.id == nodeName);
+        //    if (node == null)
+        //        return;
+        //    var oldPos = node.position;
+        //    var localPos = part.transform.InverseTransformPoint(node.position);
+        //    var localOffset = new Vector3(offset.x, localPos.y, offset.y);
+        //    var worldOffset = part.transform.TransformPoint(localOffset);
+        //    node.position = worldOffset;
+
+        //    if (oldPos != node.position)
+        //    {
+        //        var deltaPos = node.position - oldPos;
+        //        if (node.attachedPart != null)
+        //        {
+        //            if (node.attachedPart == part.parent)
+        //            {
+        //                part.transform.Translate(-deltaPos, part.transform);
+        //            }
+        //            else
+        //            {
+        //                node.attachedPart.transform.Translate(deltaPos + node.attachedPart.attPos, part.transform);
+        //            }
+        //        }
+        //    }
+        //}
 
         protected void UpdateMeshNodesSizes(CircleSection bottom, CircleSection top)
         {

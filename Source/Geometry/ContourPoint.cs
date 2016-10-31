@@ -11,8 +11,6 @@ namespace ProceduralParts.Geometry
         // Fields...
         private int _Index;
         private ContourProfile _Section;
-        private Vector2 _Normal;
-        private Vector2 _Position;
 
         public int Index
         {
@@ -24,25 +22,11 @@ namespace ProceduralParts.Geometry
             get { return _Section; }
         }
 
-        public Vector2 Position
-        {
-            get { return _Position; }
-            set
-            {
-                _Position = value;
-                CalculateAngles();
-            }
-        }
+        public bool GeneratedSeam { get; set; }
 
-        public Vector2 Normal
-        {
-            get { return _Normal; }
-            set
-            {
-                _Normal = value;
-                CalculateAngles();
-            }
-        }
+        public Vector2 Position { get; set; }
+
+        public Vector2 Normal { get; set; }
 
         /// <summary>
         /// UV value used for horizontal texturing 
@@ -93,8 +77,8 @@ namespace ProceduralParts.Geometry
         {
             _Index = -1;
             _Section = null;
-            _Position = position;
-            _Normal = normal;
+            Position = position;
+            Normal = normal;
             SideUV = sideUV;
             CalculateAngles();
         }
@@ -132,6 +116,11 @@ namespace ProceduralParts.Geometry
         internal static Vector2 GetPoint(float angle, float dist)
         {
             return new Vector2(Mathf.Cos(angle), -Mathf.Sin(angle)) * dist;
+        }
+
+        internal static Vector2 GetPoint(double angle, double dist)
+        {
+            return new Vector2((float)Math.Cos(angle), -(float)Math.Sin(angle)) * (float)dist;
         }
 
         public ContourPoint Clone()

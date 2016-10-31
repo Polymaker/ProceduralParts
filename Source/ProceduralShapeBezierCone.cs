@@ -10,13 +10,13 @@ namespace ProceduralParts
     public class ProceduralShapeBezierCone : ProceduralShapeCone
     {
 
-        private class ShapePreset
+        internal class ShapePreset
         {
             public string name;
             public float[] curve;
         }
 
-        private static readonly List<ShapePreset> shapePresets = new List<ShapePreset>
+        internal static readonly List<ShapePreset> shapePresets = new List<ShapePreset>
         {
             new ShapePreset { name="Straight", curve=new[] { 0.3f, 0.3f, 0.7f, 0.7f } },
             new ShapePreset { name="Round #1", curve=new[] { 0.4f, 0.001f, 1.0f, 0.6f } },
@@ -105,8 +105,7 @@ namespace ProceduralParts
 
             oldTopDiameter = topDiameter; oldBottomDiameter = bottomDiameter; oldLength = length;
             oldSelectedShape = selectedShape;
-            RefreshPartEditorWindow();
-            RefreshPartEditorWindow();
+            //RefreshPartEditorWindow(); //updates the tank resources' amounts but breaks dragging on sliders
 
             UpdateInterops();
         }

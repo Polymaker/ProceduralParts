@@ -96,6 +96,9 @@
     <Compile Include="DecouplerTweaker.cs" />
     <Compile Include="Geometry\Angle.cs" />
     <Compile Include="Geometry\MeshBuilder.cs" />
+    <Compile Include="Geometry\MeshLayer.cs" />
+    <Compile Include="Geometry\MeshPoint.cs" />
+    <Compile Include="Geometry\MeshShape.cs" />
     <Compile Include="Geometry\ProceduralMesh.cs" />
     <Compile Include="Geometry\ContourPoint.cs" />
     <Compile Include="Geometry\ContourProfile.cs" />

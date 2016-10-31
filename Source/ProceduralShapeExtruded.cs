@@ -55,7 +55,6 @@ namespace ProceduralParts
             
         }
 
-
         #region Shape
 
         private ContourProfile lastProfile;
@@ -63,7 +62,7 @@ namespace ProceduralParts
         protected override void UpdateShape(bool force)
         {
             //DebugMeshNormals(SidesMesh, Color.green);
-
+            //DebugMeshTangents(SidesMesh, Color.blue);
             if (!force &&
                 oldDiameter == diameter &&
                 oldLength == length &&
@@ -101,7 +100,7 @@ namespace ProceduralParts
             oldIsInscribed = isInscribed;
             oldExtrudeShape = extrudeShape;
 
-            RefreshPartEditorWindow();
+            //RefreshPartEditorWindow(); //updates the tank resources' amounts but breaks dragging on sliders
 
             UpdateInterops();
         }
@@ -168,6 +167,7 @@ namespace ProceduralParts
                     diameter == 1.25f)
             {
                 diameter = 1.5f;
+                RefreshPartEditorWindow();
             }
         }
         private void CheckEditors()

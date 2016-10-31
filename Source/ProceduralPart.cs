@@ -319,7 +319,6 @@ namespace ProceduralParts
 
         #endregion
 
-
         #region Collider mesh management methods
 
         private MeshCollider partCollider;
@@ -823,11 +822,15 @@ namespace ProceduralParts
             Material endsMaterial;
             Material sidesMaterial;
 
-            if(HighLogic.LoadedScene== GameScenes.LOADING)
+            if(HighLogic.LoadedScene == GameScenes.LOADING)
             {
                 // if we are in loading screen, all changes have to be made to the icon materials. Otherwise all icons will have the same texture 
                 endsMaterial = this.EndsIconMaterial;
                 sidesMaterial = this.SidesIconMaterial;
+                if (sidesMaterial != null && sidesMaterial.shader == null)
+                    sidesMaterial.shader = Shader.Find("KSP/ScreenSpaceMask");
+                if (endsMaterial != null && sidesMaterial.shader == null)
+                    endsMaterial.shader = Shader.Find("KSP/ScreenSpaceMask");
             }
             else
             {
@@ -847,23 +850,13 @@ namespace ProceduralParts
             TextureSet tex = loadedTextureSets[newIdx];
 
             // Set shaders
-            if (!part.Modules.Contains("ModulePaintable"))
+            if (!part.Modules.Contains("ModulePaintable") && HighLogic.LoadedScene != GameScenes.LOADING)
             {
-                if (HighLogic.LoadedScene == GameScenes.LOADING)
-                {
-                    sidesMaterial.shader = Shader.Find("KSP/ScreenSpaceMask");
-                    if (endsMaterial != null)
-                        endsMaterial.shader = Shader.Find("KSP/ScreenSpaceMask");
-                }
-                else
-                {
-                    sidesMaterial.shader = Shader.Find(tex.sidesBump != null ? "KSP/Bumped Specular" : "KSP/Specular");
-
-                    // pt is no longer specular ever, just diffuse.
-                    if (endsMaterial != null)
-                        endsMaterial.shader = Shader.Find("KSP/Diffuse");
-
-                }
+                sidesMaterial.shader = Shader.Find(tex.sidesBump != null ? "KSP/Bumped Specular" : "KSP/Specular");
+                
+                // pt is no longer specular ever, just diffuse.
+                if (endsMaterial != null)
+                    endsMaterial.shader = Shader.Find("KSP/Diffuse");
             }
 
             sidesMaterial.SetColor("_SpecColor", tex.sidesSpecular);
@@ -922,11 +915,17 @@ namespace ProceduralParts
         private readonly List<object> nodeAttachments = new List<object>(4);
         private readonly Dictionary<string, Func<Vector3>> nodeOffsets = new Dictionary<string, Func<Vector3>>();
 
-        private class NodeTransformable : TransformFollower.Transformable//, IPartMessagePartProxy
+        internal class NodeTransformable : TransformFollower.Transformable//, IPartMessagePartProxy
         {
             // leave as not serializable so will be null when deserialzied.
             private readonly Part part;
             private readonly AttachNode node;
+            //private bool initialized;
+
+            public override Transform TargetTransform
+            {
+                get { return part.transform; }
+            }
 
             // ReSharper disable once EventNeverSubscribedTo.Local
             //[PartMessageEvent]
@@ -956,10 +955,13 @@ namespace ProceduralParts
 
             public override void Translate(Vector3 translation)
             {
+                //var prevPosition = node.originalPosition;
                 node.originalPosition = node.position += part.transform.InverseTransformPoint(translation + part.transform.position);
-
                 NodePositionChanged(node, node.position, node.orientation, node.secondaryAxis);
-                //Debug.LogWarning("Transforming node:" + node.id + " part:" + part.name + " translation=" + translation + " new position=" + node.position.ToString("F3") + " orientation=" + node.orientation.ToString("F3"));
+                //Debug.Log(string.Format("Translating node {0} from part {1} attached to {2} by {3} to {4}", 
+                //    node.id, node.owner.name, node.attachedPart != null ? node.attachedPart.name : "nothing", translation, node.position));
+                //Debug.LogWarning("Transforming node:" + node.id + " part:" + part.name + " translation=" + translation.ToString("F3") + " new position=" + node.position.ToString("F3") + " orientation=" + node.orientation.ToString("F3"));
+
             }
 
             public override void Rotate(Quaternion rotate)
@@ -969,12 +971,18 @@ namespace ProceduralParts
                 node.originalOrientation = node.orientation = part.transform.InverseTransformPoint(newOrientationWorld + part.transform.position).normalized;
 
                 NodePositionChanged(node, node.position, node.orientation, node.secondaryAxis);
+
                 //Debug.LogWarning("Transforming node:" + node.id + " rotation=" + rotate.ToStringAngleAxis() + " new position=" + node.position.ToString("F3") + " orientation=" + node.orientation.ToString("F3"));
             }
 
             public Part ProxyPart
             {
                 get { return part; }
+            }
+
+            public AttachNode ProxyNode
+            {
+                get { return node; }
             }
         }
 
@@ -1030,10 +1038,10 @@ namespace ProceduralParts
 
         #region Part Attachments
 
-        private PartAttachment parentAttachment;
+        internal PartAttachment parentAttachment;
         private readonly LinkedList<PartAttachment> childAttachments = new LinkedList<PartAttachment>();
 
-        private class PartAttachment
+        internal class PartAttachment
         {
             public Part child;
             public readonly TransformFollower follower;
@@ -1077,11 +1085,11 @@ namespace ProceduralParts
             //public float y;
         }
 
-        private class ParentTransformable : TransformFollower.Transformable
+        internal class ParentTransformable : TransformFollower.Transformable
         {
             private readonly Part root;
-            private readonly Part part;
-            private readonly AttachNode childToParent;
+            internal readonly Part part;
+            internal readonly AttachNode childToParent;
 
             public ParentTransformable(Part root, Part part, AttachNode childToParent)
             {
@@ -1095,6 +1103,11 @@ namespace ProceduralParts
                 get { return root == null; }
             }
 
+            public override Transform TargetTransform
+            {
+                get { return part.transform; }
+            }
+
             public override void Translate(Vector3 trans)
             {
                 if (childToParent.nodeType != AttachNode.NodeType.Surface)
@@ -1102,9 +1115,14 @@ namespace ProceduralParts
                     // For stack nodes, push the parent up instead of moving the part down.
                     int siblings = part.symmetryCounterparts == null ? 1 : (part.symmetryCounterparts.Count + 1);
                     root.transform.Translate(trans / siblings, Space.World);
+                    //Debug.Log(string.Format("Translating root part {0} attached to {1} by {2} to {3}",
+                    //    root.name, part.name, trans / siblings, root.transform.position));
                 }
+                
                 // PushSourceInfo the part down, we need to delta this childAttachment away so that when the translation from the parent reaches here it ends in the right spot
                 part.transform.Translate(-trans, Space.World);
+                //Debug.Log(string.Format("Translating part {0} attached to {1} by {2} to {3}",
+                //    part.name, root.name, trans, part.transform.position));
             }
 
             public override void Rotate(Quaternion rotate)
@@ -1119,7 +1137,6 @@ namespace ProceduralParts
         }
 
         private Queue<Action> toAttach = new Queue<Action>();
-
 
         public void OnEditorPartEvent(ConstructionEventType type, Part part)
         {

@@ -211,7 +211,7 @@ namespace ProceduralParts
             oldFillet = fillet;
             // ReSharper restore CompareOfFloatsByEqualityOperator
 
-            RefreshPartEditorWindow();
+            //RefreshPartEditorWindow(); //updates the tank resources' amounts but breaks dragging on sliders
 
             UpdateInterops();
         }

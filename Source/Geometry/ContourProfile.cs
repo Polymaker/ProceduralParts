@@ -65,6 +65,7 @@ namespace ProceduralParts.Geometry
             Sort = 1,
             Order = 2,
             CalculateUVs = 4,
+            RemoveDuplicates = 8,
             InitializeAll = Sort | Order | CalculateUVs
         }
 
@@ -117,6 +118,7 @@ namespace ProceduralParts.Geometry
                 var pointList = _Points.ToList();
                 int newPtIdx = 0;
                 var pointAtZero = InterpolateByUV(0f, out newPtIdx);
+                pointAtZero.GeneratedSeam = true;
                 if (pointAtZero.RadialUV != 0)
                 {
                     pointAtZero.Position = new Vector2(pointAtZero.Position.x, 0f);
@@ -135,6 +137,19 @@ namespace ProceduralParts.Geometry
 
             if (initFlags.HasFlag(InitializeFlag.Order))
                 _Points = OrderProfilePoints(_Points);
+
+            if(initFlags.HasFlag(InitializeFlag.RemoveDuplicates))
+            {
+                var orderedPoints = _Points.ToList();
+                for (int i = orderedPoints.Count - 2; i > 0; i--)
+                {
+                    var p1 = orderedPoints[i];
+                    var p2 = orderedPoints[i - 1];
+                    if (p2.Position == p1.Position && p1.Normal == p2.Normal)
+                        orderedPoints.Remove(p1);
+                }
+                _Points = orderedPoints.ToArray();
+            }
 
             bool calculateUvs = initFlags.HasFlag(InitializeFlag.CalculateUVs);
 
@@ -220,7 +235,9 @@ namespace ProceduralParts.Geometry
             var foundIdx = orderedPoints.IndexOf(pointAtZero);
             if (orderedPoints.Count(p => Mathf.Approximately(p.RadialUV, 0)) == 1)
             {
-                orderedPoints.Insert(foundIdx, pointAtZero.Clone());
+                var newPoint = pointAtZero.Clone();
+                newPoint.GeneratedSeam = true;
+                orderedPoints.Insert(foundIdx, newPoint);
             }
             if(orderedPoints.First().RadialUV != 0 || !orderedPoints.First().Position.IsCloseTo(orderedPoints.Last().Position))
             {
@@ -228,17 +245,8 @@ namespace ProceduralParts.Geometry
                 orderedPoints.RemoveRange(0, foundIdx + 1);
                 orderedPoints.AddRange(endPoints);
             }
-
-            //for (int i = orderedPoints.Count - 2; i > 0; i--)
-            //{
-            //    var p1 = orderedPoints[i];
-            //    var p2 = orderedPoints[i - 1];
-            //    if (p2.Position == p1.Position && p1.Normal == p2.Normal)
-            //        orderedPoints.Remove(p1);
-            //}
             return orderedPoints.ToArray();
         }
-
 
         public ContourPoint InterpolateByUV(float uv)
         {
@@ -249,6 +257,7 @@ namespace ProceduralParts.Geometry
         public ContourPoint InterpolateByUV(float uv, out int insertIdx)
         {
             insertIdx = -1;
+            uv = Mathf.Clamp(uv, 0, 1f);
             for (int i = 0; i < PointCount; i++)
             {
                 insertIdx = i + 1;
@@ -284,7 +293,15 @@ namespace ProceduralParts.Geometry
             return null;
         }
 
-        private static bool AreSimilar(ContourProfile section1, ContourProfile section2)
+        public static ContourProfile Rotate(ContourProfile profile, Angle rotOffset)
+        {
+            var cleanPoints = profile.Points.Where(p => !p.GeneratedSeam);
+            var rotation = Quaternion.AngleAxis(rotOffset.Degrees, Vector3.forward);
+            var points = cleanPoints.Select(p => new ContourPoint(rotation * p.Position, rotation * p.Normal));
+            return new ContourProfile(points, InitializeFlag.Order | InitializeFlag.CalculateUVs);
+        }
+
+        public static bool AreSimilar(ContourProfile section1, ContourProfile section2)
         {
             if (section1 == section2)
                 return true;
@@ -298,6 +315,29 @@ namespace ProceduralParts.Geometry
                 return true;
             }
             return false;
+        }
+
+        public static ContourProfile Simplify(ContourProfile profile)//usefull for colliders
+        {
+            var points = profile.Points.ToList();
+            var tolerance = profile.Perimeter / 1000f;
+            for (int i = 0; i < points.Count - 1; i++)
+            {
+                var cp = points[i];
+                var np = points[i + 1];
+                if ((cp.Position - np.Position).magnitude < tolerance)
+                    points.Remove(np);
+            }
+            for (int i = 1; i < points.Count - 1; i++)
+            {
+                var pp = points[i - 1];
+                var cp = points[i];
+                var np = points[i + 1];
+                var avgP = Vector2.Lerp(pp.Position, np.Position, (cp.Position - pp.Position).magnitude / (pp.Position - np.Position).magnitude);
+                if ((cp.Position - avgP).magnitude < tolerance)
+                    points.Remove(cp);
+            }
+            return new ContourProfile(points, InitializeFlag.InitializeAll ^ InitializeFlag.Sort);
         }
 
         #region Section Combining
@@ -486,15 +526,15 @@ namespace ProceduralParts.Geometry
         public static ContourProfile GetPrismSection(int sideCount, float diameter, Angle rotOffset)
         {
             var points = new List<ContourPoint>();
-            float theta = (Mathf.PI * 2f) / (float)sideCount;
-            float halfT = theta / 2f;
-            float radius = diameter / 2f;
-            var startAngle = (-Mathf.PI / 2f) + rotOffset.Radians;//-90°
+            double theta = (Math.PI * 2d) / (double)sideCount;
+            double halfT = theta / 2d;
+            double radius = diameter / 2d;
+            double startAngle = (-Math.PI / 2d) + rotOffset.Radians;//-90°
 
             for (int s = 0; s < sideCount; s++)
             {
                 var curAngle = startAngle + (theta * s);
-                var norm = ContourPoint.GetPoint(curAngle, 1f);
+                var norm = ContourPoint.GetPoint(curAngle, 1d).normalized;
                 points.Add(new ContourPoint(ContourPoint.GetPoint(curAngle - halfT, radius), norm));
                 points.Add(new ContourPoint(ContourPoint.GetPoint(curAngle + halfT, radius), norm));
             }

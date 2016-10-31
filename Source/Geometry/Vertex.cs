@@ -8,7 +8,7 @@ using UnityEngine;
 namespace ProceduralParts.Geometry
 {
     [DebuggerDisplay("Pos = {Pos} UV = {Uv}")]
-    class Vertex
+    public class Vertex
     {
         public Vector3 Pos { get; set; }
         public Vector3 Norm { get; set; }

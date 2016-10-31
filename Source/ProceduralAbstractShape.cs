@@ -243,12 +243,18 @@ namespace ProceduralParts
                 meshBounds = PPart.SidesIconMesh.bounds;
             var maxSize = Mathf.Max(meshBounds.size.x, meshBounds.size.y, meshBounds.size.z);
 
-            float factor = (40f / maxSize) / 40f;
-
+            
+            var oldIconScale = part.partInfo.iconScale;
             part.partInfo.iconScale = 1f / maxSize;
-            var iconMainTrans = part.partInfo.iconPrefab.transform.GetChild(0).transform;
 
+            var iconMainTrans = part.partInfo.iconPrefab.transform.GetChild(0).transform;
+            var oldScale = iconMainTrans.localScale;
+            float factor = (40f / maxSize) / 40f;
             iconMainTrans.localScale *= factor;
+            Debug.Log(String.Format("Rescaling part '{0}' editor's icon: model from {1} to {2}, icon from {3} to {4}", 
+                part.partInfo.name, 
+                oldScale, iconMainTrans.localScale,
+                oldIconScale, part.partInfo.iconScale));
             iconMainTrans.localPosition -= meshBounds.center;
         }
 
